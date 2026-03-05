@@ -27,6 +27,8 @@ body {
   background-color: #f8fafc;
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  /* Prevent horizontal scroll on desktop when zoomed */
 }
 
 h1,
@@ -223,6 +225,10 @@ button {
   padding: 2rem;
   background-color: #ffffff;
   min-height: 100vh;
+  /* Prevent overflow when window is zoomed */
+  min-width: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .page-header {
@@ -1252,6 +1258,18 @@ td {
     height: 40px;
     justify-content: center;
   }
+
+  /* Home hero layout: single column on mobile */
+  .landing-hero-grid {
+    grid-template-columns: 1fr !important;
+    padding-top: 1rem !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Hide info cards on mobile to save space */
+  .landing-info-cards {
+    display: none !important;
+  }
 }
 
 /* Pagination Base Styles */
@@ -1320,7 +1338,7 @@ td {
 }
 
 .home-navbar {
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   padding: 1rem 2rem;
   display: flex;
@@ -1331,6 +1349,9 @@ td {
   z-index: 100;
   border-bottom: 1px solid var(--border-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* Prevent overflow when zoomed */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .btn-save {

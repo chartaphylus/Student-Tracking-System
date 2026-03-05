@@ -545,13 +545,13 @@ const LaporanBulanan = () => {
                     </div>
                     <div className="report-meta">
                         <div className="report-meta-col">
-                            <div><strong>Musyrif:</strong> {activeSantri?.kamars?.musyrifs?.nama || '-'}</div>
+                            <div><strong>Santri:</strong> {activeSantri?.nama}</div>
                             <div><strong>Kelas:</strong> {activeSantri?.kelas_list?.nama_kelas || '-'}</div>
                             <div><strong>Kamar:</strong> {activeSantri?.kamars?.nama_kamar || '-'}</div>
                         </div>
                         <div className="report-meta-col" style={{ textAlign: 'right' }}>
-                            <div><strong>Bulan:</strong> {monthNames[parseInt(monthYear.split('-')[1]) - 1]} {monthYear.split('-')[0]}</div>
-                            <div><strong>Santri:</strong> {activeSantri?.nama}</div>
+                            <div><strong>Musyrif:</strong> {activeSantri?.kamars?.musyrifs?.nama || '-'}</div>
+                            <div><strong>Bulan:</strong> {monthNames[parseInt(monthYear.split('-')[1]) - 1]} {monthYear.split('-')[0]}</div>    
                         </div>
                     </div>
 

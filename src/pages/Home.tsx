@@ -399,83 +399,109 @@ const Home = () => {
                 </Link>
             </nav>
 
-            <main className="page-transition" style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-                {/* Hero Section */}
-                <section className="landing-hero" style={{ marginBottom: '3rem', paddingTop: '1.5rem' }}>
-                    <h2 style={{ fontSize: '2.5rem', marginBottom: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, lineHeight: 1.2 }}>Pantau Perkembangan<br />Anak Anda</h2>
-                    <p style={{ fontSize: '1.1rem', color: 'var(--text-light)', maxWidth: '600px', marginBottom: '2rem', lineHeight: 1.6 }}>
-                        Masukan nama santri untuk melihat laporan capaian adab, ibadah, dan kegiatan harian secara langsung melalui sistem monitoring Pesantren Rabbaanii.
-                    </p>
+            <main className="page-transition" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+                {/* Hero Section - Two column on desktop */}
+                <section className="landing-hero-grid" style={{ marginBottom: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center', paddingTop: '2rem' }}>
+                    <div>
+                        <h2 style={{ fontSize: '2.5rem', marginBottom: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, lineHeight: 1.2 }}>Pantau Perkembangan<br />Anak Anda</h2>
+                        <p style={{ fontSize: '1.1rem', color: 'var(--text-light)', maxWidth: '600px', marginBottom: '2rem', lineHeight: 1.6 }}>
+                            Masukan nama santri untuk melihat laporan capaian adab, ibadah, dan kegiatan harian secara langsung melalui sistem monitoring Pesantren Rabbaanii.
+                        </p>
 
-                    <form onSubmit={handleSearch} className="search-form-responsive" style={{ margin: '0 auto', maxWidth: '600px' }}>
-                        <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-                            <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} size={20} />
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Klik di sini, ketik nama santri..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                style={{
-                                    paddingLeft: '3rem',
-                                    height: '52px',
-                                    borderRadius: '14px',
-                                    fontSize: '1rem',
-                                    boxShadow: 'var(--shadow-md)',
-                                    border: '1px solid #cbd5e1',
-                                    backgroundColor: 'white',
-                                    width: '100%'
-                                }}
-                            />
-                        </div>
-                        <button type="submit" className="btn-primary search-btn" style={{ height: '52px', padding: '0 2.5rem', borderRadius: '14px', whiteSpace: 'nowrap' }}>
-                            {searching ? 'Mencari...' : 'Cari'}
-                        </button>
-                    </form>
-                    {foundSantri.length > 0 && (
-                        <div style={{
-                            maxWidth: '600px',
-                            margin: '1rem auto 0',
-                            background: 'white',
-                            borderRadius: '14px',
-                            boxShadow: 'var(--shadow-lg)',
-                            border: '1px solid var(--border-color)',
-                            overflow: 'hidden',
-                            textAlign: 'left'
-                        }}>
-                            {foundSantri.map(s => (
-                                <button
-                                    key={s.id}
-                                    onClick={() => selectSantri(s)}
+                        <form onSubmit={handleSearch} className="search-form-responsive" style={{ margin: '0 auto', maxWidth: '600px' }}>
+                            <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+                                <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} size={20} />
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Klik di sini, ketik nama santri..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
                                     style={{
-                                        width: '100%',
-                                        padding: '1rem 1.5rem',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        background: 'none',
-                                        borderBottom: '1px solid var(--border-color)',
-                                        transition: 'background 0.2s'
+                                        paddingLeft: '3rem',
+                                        height: '52px',
+                                        borderRadius: '14px',
+                                        fontSize: '1rem',
+                                        boxShadow: 'var(--shadow-md)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: 'white',
+                                        width: '100%'
                                     }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <div style={{ background: 'var(--secondary-color)', padding: '0.5rem', borderRadius: '8px' }}>
-                                            <User size={20} color="var(--primary-color)" />
+                                />
+                            </div>
+                            <button type="submit" className="btn-primary search-btn" style={{ height: '52px', padding: '0 2.5rem', borderRadius: '14px', whiteSpace: 'nowrap' }}>
+                                {searching ? 'Mencari...' : 'Cari'}
+                            </button>
+                        </form>
+                        {foundSantri.length > 0 && (
+                            <div style={{
+                                maxWidth: '100%',
+                                marginTop: '1rem',
+                                background: 'white',
+                                borderRadius: '14px',
+                                boxShadow: 'var(--shadow-lg)',
+                                border: '1px solid var(--border-color)',
+                                overflow: 'hidden',
+                                textAlign: 'left'
+                            }}>
+                                {foundSantri.map(s => (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => selectSantri(s)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '1rem 1.5rem',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            background: 'none',
+                                            borderBottom: '1px solid var(--border-color)',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{ background: 'var(--secondary-color)', padding: '0.5rem', borderRadius: '8px' }}>
+                                                <User size={20} color="var(--primary-color)" />
+                                            </div>
+                                            <div>
+                                                <span style={{ fontWeight: 600, display: 'block' }}>{s.nama}</span>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                                                    {s.kelas_list?.nama_kelas || '-'} • {s.kamars?.nama_kamar || '-'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span style={{ fontWeight: 600, display: 'block' }}>{s.nama}</span>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
-                                                {s.kelas_list?.nama_kelas || '-'} • {s.kamars?.nama_kamar || '-'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={18} color="var(--text-light)" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                                        <ChevronRight size={18} color="var(--text-light)" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right column: info cards */}
+                    <div className="landing-info-cards" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {[{ icon: '📖', title: 'Pantau Adab Harian', desc: 'Lihat capaian akhlak dan adab santri setiap harinya.' },
+                        { icon: '🕌', title: 'Rekap Ibadah', desc: 'Monitoring konsistensi ibadah santri setiap bulan.' },
+                        { icon: '📊', title: 'Laporan Bulanan', desc: 'Grafik dan tabel capaian otomatis tersedia dalam PDF.' }].map((item, i) => (
+                            <div key={i} style={{
+                                background: 'white',
+                                borderRadius: '16px',
+                                padding: '1.25rem 1.5rem',
+                                border: '1px solid var(--border-color)',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '1rem',
+                                boxShadow: 'var(--shadow-sm)'
+                            }}>
+                                <span style={{ fontSize: '1.75rem' }}>{item.icon}</span>
+                                <div>
+                                    <div style={{ fontWeight: 700, color: 'var(--primary-color)', marginBottom: '0.25rem' }}>{item.title}</div>
+                                    <div style={{ fontSize: '0.875rem', color: 'var(--text-light)', lineHeight: 1.5 }}>{item.desc}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </section>
 
                 {/* Dashboard Results */}
