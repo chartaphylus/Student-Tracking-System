@@ -1,45 +1,46 @@
-import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { PageHeader } from '../components/layout/PageHeader';
+import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { ToastContainer } from '../components/ui/Toast';
+import { FullPageSpinner } from '../components/ui/Spinner';
+import { EmptyState } from '../components/ui/EmptyState';
+import { DataTable, Th, Td, Tr } from '../components/shared/DataTable';
+import { Pagination } from '../components/shared/Pagination';
+import { useToast } from '../hooks/useToast';
 
-const DataSantri = () => {
-    const [kelasFilter, setKelasFilter] = useState('Semua Kelas');
+const ITEMS_PER_PAGE = 10;
+
+const inputCls = `w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm
+  focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:bg-white transition-all`;
+
+export default function DataSantri() {
+    const [kelasFilter, setKelasFilter] = useState('');
     const [santriData, setSantriData] = useState<any[]>([]);
-
-    // Master data
     const [kelasList, setKelasList] = useState<any[]>([]);
     const [kamarList, setKamarList] = useState<any[]>([]);
-
     const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
 
-    // Modal state
+    // Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [confirmDelete, setConfirmDelete] = useState<{ id: string, nama: string } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; nama: string } | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ nama: '', kelas_id: '', kamar_id: '' });
     const [submitting, setSubmitting] = useState(false);
-    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
-    // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8; // Bit more compact
+    const { toasts, showToast, removeToast } = useToast();
 
-    useEffect(() => {
-        fetchMasterData();
-        fetchSantri();
-    }, []);
+    useEffect(() => { fetchMasterData(); fetchSantri(); }, []);
 
     const fetchMasterData = async () => {
         const [kelasRes, kamarRes] = await Promise.all([
             supabase.from('kelas_list').select('*').order('nama_kelas'),
-            // Fetch kamar along with its musyrif
-            supabase.from('kamars').select(`
-                id,
-                nama_kamar,
-                musyrifs ( id, nama )
-            `).order('nama_kamar')
+            supabase.from('kamars').select('id, nama_kamar, musyrifs(id, nama)').order('nama_kamar'),
         ]);
-
         if (kelasRes.data) setKelasList(kelasRes.data);
         if (kamarRes.data) setKamarList(kamarRes.data);
     };
@@ -48,56 +49,22 @@ const DataSantri = () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('santri')
-            .select(`
-                id,
-                nama,
-                kelas_id,
-                kamar_id,
-                kelas_list ( nama_kelas ),
-                kamars ( nama_kamar, musyrifs ( nama ) )
-            `)
-            .order('nama', { ascending: true });
-
-        if (error) {
-            console.error('Error fetching santri:', error);
-            showToast('Gagal memuat data santri', 'error');
-        } else {
-            setSantriData(data || []);
-        }
+            .select('id, nama, kelas_id, kamar_id, kelas_list(nama_kelas), kamars(nama_kamar, musyrifs(nama))')
+            .order('nama');
+        if (error) showToast('Gagal memuat data santri', 'error');
+        else setSantriData(data || []);
         setLoading(false);
     };
 
-    const showToast = (message: string, type: 'success' | 'error') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
-
-    const handleOpenAdd = () => {
-        setEditingId(null);
-        setFormData({ nama: '', kelas_id: '', kamar_id: '' });
-        setIsModalOpen(true);
-    };
-
-    const handleOpenEdit = (santri: any) => {
-        setEditingId(santri.id);
-        setFormData({
-            nama: santri.nama,
-            kelas_id: santri.kelas_id || '',
-            kamar_id: santri.kamar_id || ''
-        });
-        setIsModalOpen(true);
-    };
+    const handleOpenAdd = () => { setEditingId(null); setFormData({ nama: '', kelas_id: '', kamar_id: '' }); setIsModalOpen(true); };
+    const handleOpenEdit = (s: any) => { setEditingId(s.id); setFormData({ nama: s.nama, kelas_id: s.kelas_id || '', kamar_id: s.kamar_id || '' }); setIsModalOpen(true); };
 
     const handleDelete = async () => {
         if (!confirmDelete) return;
         setSubmitting(true);
         const { error } = await supabase.from('santri').delete().eq('id', confirmDelete.id);
-        if (error) {
-            showToast('Gagal menghapus data: ' + error.message, 'error');
-        } else {
-            showToast('Data santri berhasil dihapus', 'success');
-            fetchSantri();
-        }
+        if (error) showToast('Gagal menghapus: ' + error.message, 'error');
+        else { showToast('Santri berhasil dihapus', 'success'); fetchSantri(); }
         setSubmitting(false);
         setConfirmDelete(null);
     };
@@ -105,263 +72,162 @@ const DataSantri = () => {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
-
-        const payload = {
-            nama: formData.nama,
-            kelas_id: formData.kelas_id || null,
-            kamar_id: formData.kamar_id || null
-        };
-
-        if (editingId) {
-            const { error } = await supabase.from('santri').update(payload).eq('id', editingId);
-            if (error) {
-                showToast('Gagal mengupdate data: ' + error.message, 'error');
-            } else {
-                showToast('Data santri berhasil diperbarui', 'success');
-            }
-        } else {
-            const { error } = await supabase.from('santri').insert([payload]);
-            if (error) {
-                showToast('Gagal menambah data: ' + error.message, 'error');
-            } else {
-                showToast('Santri baru berhasil ditambahkan', 'success');
-            }
-        }
-
+        const payload = { nama: formData.nama, kelas_id: formData.kelas_id || null, kamar_id: formData.kamar_id || null };
+        const fn = editingId
+            ? supabase.from('santri').update(payload).eq('id', editingId)
+            : supabase.from('santri').insert([payload]);
+        const { error } = await fn;
+        if (error) showToast('Gagal menyimpan: ' + error.message, 'error');
+        else { showToast(editingId ? 'Santri diperbarui' : 'Santri ditambahkan', 'success'); setIsModalOpen(false); fetchSantri(); }
         setSubmitting(false);
-        setIsModalOpen(false);
-        fetchSantri();
     };
 
-    const filteredSantri = kelasFilter === 'Semua Kelas'
-        ? santriData
-        : santriData.filter(s => s.kelas_id === kelasFilter);
-
-    const totalPages = Math.ceil(filteredSantri.length / itemsPerPage);
-    const paginatedSantri = filteredSantri.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
+    const filtered = useMemo(() =>
+        kelasFilter ? santriData.filter(s => s.kelas_id === kelasFilter) : santriData,
+        [santriData, kelasFilter]
     );
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [kelasFilter]);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+    const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const handleFilterChange = (v: string) => { setKelasFilter(v); setCurrentPage(1); };
 
     return (
-        <div className="page-transition">
-            <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-                <div>
-                    <h1 className="page-title">Data Santri</h1>
-                    <p style={{ color: 'var(--text-light)', marginTop: '0.2rem', fontSize: '0.9rem' }}>
-                        Kelola data santri beserta pemempatan kamar dan kelas (Diatur lewat Data Master terlebih dahulu).
-                    </p>
-                </div>
+        <div>
+            <PageHeader
+                title="Data Santri"
+                subtitle="Kelola data santri beserta kamar dan kelas."
+                action={
+                    <Button icon={<Plus size={16} />} onClick={handleOpenAdd} fullWidth>
+                        Tambah Santri
+                    </Button>
+                }
+            />
+
+            {/* Filter */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5 flex flex-col sm:flex-row gap-3">
+                <select
+                    value={kelasFilter}
+                    onChange={e => handleFilterChange(e.target.value)}
+                    className="flex-1 h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                >
+                    <option value="">Semua Kelas</option>
+                    {kelasList.map(k => <option key={k.id} value={k.id}>{k.nama_kelas}</option>)}
+                </select>
             </div>
 
-            <div className="filters-bar">
-                <div className="filter-group">
-                    <select
-                        className="filter-select"
-                        value={kelasFilter}
-                        onChange={e => setKelasFilter(e.target.value)}
-                    >
-                        <option value="Semua Kelas">Semua Kelas</option>
-                        {kelasList.map(k => (
-                            <option key={`filter-${k.id}`} value={k.id}>{k.nama_kelas}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="page-actions">
-                    <button className="btn-secondary" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }} onClick={handleOpenAdd}>
-                        <Plus size={16} /> Tambah Santri
-                    </button>
-                </div>
-            </div>
-
-            <div className="card table-responsive">
+            {/* Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 {loading ? (
-                    <div style={{ padding: '3rem', textAlign: 'center' }}><Loader className="animate-spin inline" size={24} /> Memuat data...</div>
+                    <FullPageSpinner label="Memuat data santri..." />
                 ) : (
                     <>
-                        <table>
+                        <DataTable>
                             <thead>
                                 <tr>
-                                    <th>No</th>
-                                    <th>Nama</th>
-                                    <th>Kelas</th>
-                                    <th>Kamar</th>
-                                    <th>Aksi</th>
+                                    <Th className="w-12">No</Th>
+                                    <Th>Nama Santri</Th>
+                                    <Th>Kelas</Th>
+                                    <Th>Kamar</Th>
+                                    <Th className="text-right">Aksi</Th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {paginatedSantri.map((santri, index) => (
-                                    <tr key={santri.id}>
-                                        <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                                        <td>
-                                            <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{santri.nama}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>ID: {santri.id.slice(0, 8)}</div>
-                                        </td>
-                                        <td>{santri.kelas_list?.nama_kelas || '-'}</td>
-                                        <td>
-                                            <div>{santri.kamars?.nama_kamar || '-'}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>{santri.kamars?.musyrifs?.nama || ''}</div>
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
-                                                <button className="btn-icon edit" onClick={() => handleOpenEdit(santri)} title="Edit"><Edit2 size={16} /></button>
-                                                <button className="btn-icon delete" onClick={() => setConfirmDelete({ id: santri.id, nama: santri.nama })} title="Hapus"><Trash2 size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filteredSantri.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>Tidak ada data santri. Pastikan sudah mengisi Data Kelas/Kamar.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-
-                        {/* Pagination UI */}
-                        {totalPages > 1 && (
-                            <div className="pagination-container">
-                                <div className="pagination-info">
-                                    Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredSantri.length)} dari {filteredSantri.length} santri
-                                </div>
-                                <div className="pagination-btns">
-                                    <button
-                                        className="page-btn"
-                                        disabled={currentPage === 1}
-                                        onClick={() => setCurrentPage(prev => prev - 1)}
-                                    >
-                                        &lt;
-                                    </button>
-                                    {(() => {
-                                        const pages = [];
-                                        const maxVisible = 5;
-                                        let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                                        let end = Math.min(totalPages, start + maxVisible - 1);
-
-                                        if (end - start + 1 < maxVisible) {
-                                            start = Math.max(1, end - maxVisible + 1);
-                                        }
-
-                                        if (start > 1) {
-                                            pages.push(
-                                                <button key={1} className="page-btn" onClick={() => setCurrentPage(1)}>1</button>
-                                            );
-                                            if (start > 2) pages.push(<span key="dots-1" style={{ alignSelf: 'center', padding: '0 0.5rem' }}>...</span>);
-                                        }
-
-                                        for (let i = start; i <= end; i++) {
-                                            pages.push(
+                                {paginated.length === 0 ? (
+                                    <tr><td colSpan={5}><EmptyState message="Tidak ada data santri." /></td></tr>
+                                ) : paginated.map((s, i) => (
+                                    <Tr key={s.id}>
+                                        <Td className="text-slate-400 text-xs">{(currentPage - 1) * ITEMS_PER_PAGE + i + 1}</Td>
+                                        <Td>
+                                            <p className="font-semibold text-slate-800 leading-tight">{s.nama}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">ID: {s.id.slice(0, 8)}</p>
+                                        </Td>
+                                        <Td>
+                                            <span className="px-2 py-0.5 bg-primary-light text-primary text-xs font-medium rounded-lg">
+                                                {s.kelas_list?.nama_kelas || '-'}
+                                            </span>
+                                        </Td>
+                                        <Td>
+                                            <p className="text-slate-700">{s.kamars?.nama_kamar || '-'}</p>
+                                            <p className="text-xs text-slate-400">{s.kamars?.musyrifs?.nama || ''}</p>
+                                        </Td>
+                                        <Td className="text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
                                                 <button
-                                                    key={i}
-                                                    className={`page-btn ${currentPage === i ? 'active' : ''}`}
-                                                    onClick={() => setCurrentPage(i)}
+                                                    onClick={() => handleOpenEdit(s)}
+                                                    className="p-1.5 rounded-lg hover:bg-primary-light text-slate-400 hover:text-primary transition-colors"
+                                                    title="Edit"
                                                 >
-                                                    {i}
+                                                    <Edit2 size={15} />
                                                 </button>
-                                            );
-                                        }
+                                                <button
+                                                    onClick={() => setConfirmDelete({ id: s.id, nama: s.nama })}
+                                                    className="p-1.5 rounded-lg hover:bg-danger/10 text-slate-400 hover:text-danger transition-colors"
+                                                    title="Hapus"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </Td>
+                                    </Tr>
+                                ))}
+                            </tbody>
+                        </DataTable>
 
-                                        if (end < totalPages) {
-                                            if (end < totalPages - 1) pages.push(<span key="dots-2" style={{ alignSelf: 'center', padding: '0 0.5rem' }}>...</span>);
-                                            pages.push(
-                                                <button key={totalPages} className="page-btn" onClick={() => setCurrentPage(totalPages)}>{totalPages}</button>
-                                            );
-                                        }
-                                        return pages;
-                                    })()}
-                                    <button
-                                        className="page-btn"
-                                        disabled={currentPage === totalPages}
-                                        onClick={() => setCurrentPage(prev => prev + 1)}
-                                    >
-                                        &gt;
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={filtered.length}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                            onPageChange={setCurrentPage}
+                        />
                     </>
                 )}
             </div>
 
-            {/* Toast Notification */}
-            {toast && (
-                <div className={`alert-toast ${toast.type}`}>
-                    {toast.type === 'success' ? '✓' : '✕'} {toast.message}
-                </div>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            {confirmDelete && (
-                <div className="modal-overlay">
-                    <div className="modal-container">
-                        <div className="modal-header">
-                            <h3 className="modal-title">Konfirmasi Hapus</h3>
-                        </div>
-                        <div className="modal-body">
-                            Apakah Anda yakin ingin menghapus data santri <strong>{confirmDelete.nama}</strong>? Tindakan ini tidak dapat dibatalkan.
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn-secondary" onClick={() => setConfirmDelete(null)} disabled={submitting}>Batal</button>
-                            <button className="btn-danger" onClick={handleDelete} disabled={submitting}>
-                                {submitting ? <Loader className="animate-spin" size={18} /> : 'Ya, Hapus'}
-                            </button>
-                        </div>
+            {/* Add/Edit Modal */}
+            <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Edit Santri' : 'Tambah Santri'}>
+                <form onSubmit={handleSave} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Nama Lengkap</label>
+                        <input type="text" required autoFocus className={inputCls}
+                            value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} />
                     </div>
-                </div>
-            )}
-
-            {/* Modal Tambah/Edit */}
-            {
-                isModalOpen && (
-                    <div className="modal-overlay">
-                        <div className="modal-content">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h2 className="modal-header" style={{ marginBottom: 0 }}>{editingId ? 'Edit Santri' : 'Tambah Santri'}</h2>
-                                <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
-                            </div>
-                            <form onSubmit={handleSave} style={{ marginTop: '1.5rem' }}>
-                                <div className="form-group">
-                                    <label>Nama Lengkap</label>
-                                    <input type="text" className="form-control" value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} required autoFocus />
-                                </div>
-                                <div className="form-group">
-                                    <label>Kelas</label>
-                                    <select className="form-control" value={formData.kelas_id} onChange={e => setFormData({ ...formData, kelas_id: e.target.value })} required>
-                                        <option value="">-- Pilih Kelas --</option>
-                                        {kelasList.map((k) => (
-                                            <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Kamar</label>
-                                    <select className="form-control" value={formData.kamar_id} onChange={e => setFormData({ ...formData, kamar_id: e.target.value })} required>
-                                        <option value="">-- Pilih Kamar --</option>
-                                        {kamarList.map((k) => (
-                                            <option key={k.id} value={k.id}>
-                                                {k.nama_kamar} {k.musyrifs ? `(Oleh: ${k.musyrifs.nama})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="modal-actions">
-                                    <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
-                                    <button type="submit" className="btn-save" disabled={submitting}>
-                                        {submitting ? 'Menyimpan...' : 'Simpan'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Kelas</label>
+                        <select required className={inputCls}
+                            value={formData.kelas_id} onChange={e => setFormData({ ...formData, kelas_id: e.target.value })}>
+                            <option value="">-- Pilih Kelas --</option>
+                            {kelasList.map(k => <option key={k.id} value={k.id}>{k.nama_kelas}</option>)}
+                        </select>
                     </div>
-                )
-            }
-        </div >
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Kamar</label>
+                        <select required className={inputCls}
+                            value={formData.kamar_id} onChange={e => setFormData({ ...formData, kamar_id: e.target.value })}>
+                            <option value="">-- Pilih Kamar --</option>
+                            {kamarList.map(k => (
+                                <option key={k.id} value={k.id}>{k.nama_kamar}{k.musyrifs ? ` (${k.musyrifs.nama})` : ''}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <Button type="button" variant="outline" fullWidth onClick={() => setIsModalOpen(false)} disabled={submitting}>Batal</Button>
+                        <Button type="submit" fullWidth loading={submitting}>Simpan</Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Confirm Delete */}
+            <ConfirmModal
+                open={!!confirmDelete}
+                onClose={() => setConfirmDelete(null)}
+                onConfirm={handleDelete}
+                loading={submitting}
+                message={`Yakin ingin menghapus santri "${confirmDelete?.nama}"? Tindakan ini tidak dapat dibatalkan.`}
+            />
+
+            <ToastContainer toasts={toasts} onClose={removeToast} />
+        </div>
     );
-};
-
-export default DataSantri;
+}

@@ -1,49 +1,27 @@
 import { useState, useEffect } from 'react';
-import { Search, Loader, FileText, LayoutDashboard, User, Calendar, MapPin, GraduationCap, ChevronRight, LogIn } from 'lucide-react';
+import { Search, FileText, LayoutDashboard, User, Calendar, MapPin, GraduationCap, LogIn, BookOpen, BarChart3 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Link } from 'react-router-dom';
-
-const getProgressBarColor = (val: number) => {
-    if (val > 90) return '#1a4267'; // bg-excellent
-    if (val > 75) return '#3b82f6'; // bg-good
-    if (val > 60) return '#eab308'; // bg-fair
-    if (val > 40) return '#f97316'; // bg-poor
-    return '#ef4444'; // bg-bad
-};
-
-const ProgressBar = ({ value }: { value: number }) => {
-    const color = getProgressBarColor(value);
-    const isDarkText = value < 50;
-
-    return (
-        <div style={{
-            width: '90px',
-            height: '24px',
-            backgroundColor: '#e2e8f0',
-            borderRadius: '4px',
-            position: 'relative',
-            overflow: 'hidden',
-            margin: '0 auto'
-        }}>
-            <div style={{ height: '100%', width: `${value}%`, backgroundColor: color, borderRadius: '4px' }} />
-            <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.75rem', fontWeight: 600, color: isDarkText ? '#334155' : 'white'
-            }}>
-                {value.toFixed(1)}%
-            </div>
-        </div>
-    );
-};
+import { Button } from '../components/ui/Button';
+import { ToastContainer } from '../components/ui/Toast';
+import { FullPageSpinner } from '../components/ui/Spinner';
+import { EmptyState } from '../components/ui/EmptyState';
+import { DataTable, Th, Td, Tr } from '../components/shared/DataTable';
+import { ProgressBar } from '../components/shared/ProgressBar';
+import { useToast } from '../hooks/useToast';
 
 const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-const barColors = ['#2dbdb6', '#69d2a1', '#7b61ff', '#ff6b6b', '#ffa94d', '#74c0fc', '#f06595', '#c0eb75', '#ffd43b'];
+const barColors = ['#2dbdb6', '#69d2a1', '#7b61ff', '#ff6b6b', '#ffa94d', '#74c0fc', '#f06595', '#ffd43b'];
+const getColor = (v: number) => v > 90 ? '#1a4267' : v > 75 ? '#3b82f6' : v > 60 ? '#eab308' : v > 40 ? '#f97316' : '#ef4444';
+const hexToRgb = (hex: string) => {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? { r: parseInt(r[1], 16), g: parseInt(r[2], 16), b: parseInt(r[3], 16) } : { r: 26, g: 66, b: 103 };
+};
 
-const Home = () => {
+export default function Home() {
     const today = new Date();
     const [monthYear, setMonthYear] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
     const [searchTerm, setSearchTerm] = useState('');
@@ -52,586 +30,288 @@ const Home = () => {
     const [selectedSantri, setSelectedSantri] = useState<any>(null);
     const [categoryReports, setCategoryReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [downloading, setDownloading] = useState(false);
 
-    const showToast = (message: string, type: 'success' | 'error') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
+    const { toasts, showToast, removeToast } = useToast();
 
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!searchTerm.trim()) {
-            showToast('Masukkan nama santri', 'error');
-            return;
-        }
-
-        setSearching(true);
-        setSelectedSantri(null);
-        setCategoryReports([]);
-        setFoundSantri([]);
-
+        if (!searchTerm.trim()) return showToast('Masukkan nama santri', 'error');
+        setSearching(true); setSelectedSantri(null); setCategoryReports([]); setFoundSantri([]);
         try {
-            console.log('Searching for:', searchTerm);
-            const { data, error } = await supabase
-                .from('santri')
-                .select('id, nama, kelas_id, kamar_id, kelas_list ( nama_kelas ), kamars ( id, nama_kamar, musyrif_id, musyrifs ( nama ) )')
-                .ilike('nama', `%${searchTerm.trim()}%`)
-                .limit(10);
-
-            if (error) {
-                console.error('Search error:', error);
-                showToast(`Gagal mencari: ${error.message}`, 'error');
-            } else {
-                console.log('Search results:', data);
-                setFoundSantri(data || []);
-                if (!data || data.length === 0) {
-                    showToast('Santri tidak ditemukan. Pastikan nama sudah benar.', 'error');
-                }
-            }
-        } catch (err) {
-            console.error('Unexpected search error:', err);
-            showToast('Terjadi kesalahan koneksi', 'error');
-        } finally {
-            setSearching(false);
-        }
+            const { data, error } = await supabase.from('santri')
+                .select('id, nama, kelas_id, kamar_id, kelas_list(nama_kelas), kamars(id, nama_kamar, musyrif_id, musyrifs(nama))')
+                .ilike('nama', `%${searchTerm.trim()}%`).limit(10);
+            if (error) showToast(`Gagal mencari: ${error.message}`, 'error');
+            else { setFoundSantri(data || []); if (!data?.length) showToast('Santri tidak ditemukan.', 'error'); }
+        } catch { showToast('Terjadi kesalahan koneksi', 'error'); }
+        finally { setSearching(false); }
     };
 
-    const selectSantri = (santri: any) => {
-        setSelectedSantri(santri);
-        setFoundSantri([]);
-    };
-
-    useEffect(() => {
-        if (selectedSantri) {
-            fetchData();
-        }
-    }, [selectedSantri, monthYear]);
+    useEffect(() => { if (selectedSantri) fetchData(); }, [selectedSantri, monthYear]);
 
     const fetchData = async () => {
         if (!selectedSantri) return;
-
         setLoading(true);
-        const [targetYear, targetMonth] = monthYear.split('-');
-        const year = parseInt(targetYear);
-        const monthIndex = parseInt(targetMonth) - 1;
-
-        const startOfMonth = new Date(year, monthIndex, 1);
-        const endOfMonth = new Date(year, monthIndex + 1, 0);
-        const startStr = startOfMonth.toISOString().split('T')[0];
-        const endStr = endOfMonth.toISOString().split('T')[0];
-        const daysInMonth = endOfMonth.getDate();
-
+        const [yr, mo] = monthYear.split('-').map(Number);
+        const start = new Date(yr, mo - 1, 1); const end = new Date(yr, mo, 0);
+        const startStr = start.toISOString().split('T')[0]; const endStr = end.toISOString().split('T')[0];
+        const daysInMonth = end.getDate();
         try {
-            const catRes = await supabase.from('kategori_kegiatan').select('*').order('created_at', { ascending: true });
-            const categories = catRes.data || [];
-
-            const actRes = await supabase.from('kegiatan').select('id, nama_kegiatan, kategori_id');
-            const activities = actRes.data || [];
-
-            const actDict: Record<string, any> = {};
-            activities.forEach(a => actDict[a.id] = a);
-
-            const recRes = await supabase.from('kegiatan_records').select('*')
-                .eq('santri_id', selectedSantri.id)
-                .gte('tanggal', startStr)
-                .lte('tanggal', endStr);
-
-            const allRecords = recRes.data || [];
-
-            const reports = categories.map((cat, idx) => {
-                const catRecords = allRecords.filter(r => actDict[r.kegiatan_id]?.kategori_id === cat.id);
-                const catActivities = activities.filter(a => a.kategori_id === cat.id);
-                const myActDict: Record<string, string> = {};
-                catActivities.forEach(a => myActDict[a.id] = a.nama_kegiatan);
-
-                const chart = processDailyChart(catRecords, daysInMonth);
-                const weekly = processWeekly(catRecords);
-                const { items, avg } = processByItem(catRecords, myActDict);
-
-                return {
-                    id: cat.id,
-                    title: cat.nama_kategori,
-                    chartColor: barColors[idx % barColors.length],
-                    chart,
-                    weekly,
-                    items,
-                    avg
-                };
+            const [catRes, actRes, recRes] = await Promise.all([
+                supabase.from('kategori_kegiatan').select('*').order('created_at'),
+                supabase.from('kegiatan').select('id, nama_kegiatan, kategori_id'),
+                supabase.from('kegiatan_records').select('*').eq('santri_id', selectedSantri.id).gte('tanggal', startStr).lte('tanggal', endStr),
+            ]);
+            const cats = catRes.data || []; const acts = actRes.data || []; const recs = recRes.data || [];
+            const actDict: Record<string, any> = {}; acts.forEach(a => { actDict[a.id] = a; });
+            const reports = cats.map((cat, idx) => {
+                const catRecs = recs.filter(r => actDict[r.kegiatan_id]?.kategori_id === cat.id);
+                const myDict: Record<string, string> = {};
+                acts.filter(a => a.kategori_id === cat.id).forEach(a => { myDict[a.id] = a.nama_kegiatan; });
+                const chart = processDailyChart(catRecs, daysInMonth);
+                const items = processByItem(catRecs, myDict);
+                return { id: cat.id, title: cat.nama_kategori, chartColor: barColors[idx % barColors.length], chart, ...items };
             });
-
-            setCategoryReports(reports.filter((r: any) => r.items.length > 0));
-        } catch (error) {
-            console.error('Error fetching data', error);
-        } finally {
-            setLoading(false);
-        }
+            setCategoryReports(reports.filter(r => r.items.length > 0));
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
     };
 
-    const processDailyChart = (records: any[], daysInMonth: number) => {
-        const byDay: Record<number, { true: number, total: number }> = {};
-        for (let i = 1; i <= daysInMonth; i++) byDay[i] = { true: 0, total: 0 };
-
-        records.forEach(r => {
-            const d = new Date(r.tanggal).getDate();
-            byDay[d].total += 1;
-            if (r.is_done) byDay[d].true += 1;
-        });
-
-        return Array.from({ length: daysInMonth }, (_, i) => {
-            const d = i + 1;
-            let val = 0;
-            if (byDay[d].total > 0) {
-                val = Math.round((byDay[d].true / byDay[d].total) * 100);
-            }
-            return { day: d, value: val };
+    const processDailyChart = (recs: any[], days: number) => {
+        const byDay: Record<number, { t: number; d: number }> = {};
+        for (let i = 1; i <= days; i++) byDay[i] = { t: 0, d: 0 };
+        recs.forEach(r => { const d = new Date(r.tanggal).getDate(); byDay[d].t++; if (r.is_done) byDay[d].d++; });
+        return Array.from({ length: days }, (_, i) => {
+            const d = i + 1; return { day: d, value: byDay[d].t > 0 ? Math.round((byDay[d].d / byDay[d].t) * 100) : 0 };
         });
     };
 
-    const processWeekly = (records: any[]) => {
-        const weeks = [
-            { pekan: 'Pekan 1', sum: 0, total: 0 },
-            { pekan: 'Pekan 2', sum: 0, total: 0 },
-            { pekan: 'Pekan 3', sum: 0, total: 0 },
-            { pekan: 'Pekan 4', sum: 0, total: 0 },
-        ];
-
-        records.forEach(r => {
-            const d = new Date(r.tanggal).getDate();
-            let wIndex = Math.floor((d - 1) / 7);
-            if (wIndex > 3) wIndex = 3;
-
-            weeks[wIndex].total += 1;
-            if (r.is_done) weeks[wIndex].sum += 1;
+    const processByItem = (recs: any[], dict: Record<string, string>) => {
+        const stats: Record<string, { s: number; t: number }> = {};
+        Object.keys(dict).forEach(id => { stats[id] = { s: 0, t: 0 }; });
+        recs.forEach(r => { if (stats[r.kegiatan_id]) { stats[r.kegiatan_id].t++; if (r.is_done) stats[r.kegiatan_id].s++; } });
+        let gS = 0, gT = 0, no = 1;
+        const items = Object.keys(stats).filter(id => stats[id].t > 0).map(id => {
+            gT += stats[id].t; gS += stats[id].s;
+            return { no: no++, aktivitas: dict[id], capaian: (stats[id].s / stats[id].t) * 100 };
         });
-
-        const res = weeks.map((w, no) => ({
-            no: no + 1,
-            pekan: w.pekan,
-            jumlah: w.total,
-            capaian: w.total === 0 ? 0 : (w.sum / w.total) * 100
-        }));
-
-        if (res.every(r => r.jumlah === 0)) return [];
-        return res;
-    };
-
-    const processByItem = (records: any[], dict: Record<string, string>) => {
-        const itemStats: Record<string, { sum: number, total: number }> = {};
-        Object.keys(dict).forEach(id => itemStats[id] = { sum: 0, total: 0 });
-
-        records.forEach(r => {
-            if (itemStats[r.kegiatan_id]) {
-                itemStats[r.kegiatan_id].total += 1;
-                if (r.is_done) itemStats[r.kegiatan_id].sum += 1;
-            }
-        });
-
-        let grandSum = 0;
-        let grandTotal = 0;
-        let no = 1;
-        const res: any[] = [];
-        Object.keys(itemStats).forEach(id => {
-            if (itemStats[id].total > 0) {
-                const itemTot = itemStats[id].total;
-                const itemSum = itemStats[id].sum;
-                res.push({
-                    no: no++,
-                    aktivitas: dict[id],
-                    jml: itemTot,
-                    capaian: (itemSum / itemTot) * 100
-                });
-                grandTotal += itemTot;
-                grandSum += itemSum;
-            }
-        });
-
-        return {
-            items: res,
-            avg: grandTotal > 0 ? (grandSum / grandTotal) * 100 : 0
-        };
+        return { items, avg: gT ? (gS / gT) * 100 : 0 };
     };
 
     const generatePDF = async () => {
-        if (!selectedSantri || categoryReports.length === 0) return;
-        showToast('Menghasilkan dokumen PDF...', 'success');
-
+        if (!selectedSantri) return showToast('Pilih santri terlebih dahulu', 'error');
+        if (!categoryReports.length) return showToast('Tidak ada data kegiatan untuk bulan ini', 'error');
+        setDownloading(true);
         try {
             const doc = new jsPDF();
-            const year = monthYear.split('-')[0];
-            const monthStr = monthNames[parseInt(monthYear.split('-')[1]) - 1];
-
-            // Header
-            doc.setFontSize(18);
-            doc.setTextColor(26, 66, 103);
+            const [yr, mn] = monthYear.split('-'); const monthStr = monthNames[parseInt(mn) - 1];
+            doc.setFontSize(16); doc.setTextColor(26, 66, 103);
             doc.text('LAPORAN BULANAN KEGIATAN & PRESTASI', 105, 15, { align: 'center' });
-
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.text(`Periode: ${monthStr} ${year}`, 105, 22, { align: 'center' });
-
-            // Info Table
+            doc.setFontSize(9); doc.setTextColor(100);
+            doc.text(`Periode: ${monthStr} ${yr}`, 105, 22, { align: 'center' });
             autoTable(doc, {
-                startY: 30,
-                head: [],
+                startY: 30, head: [],
                 body: [
-                    ['Nama Santri', ':', selectedSantri.nama, 'Musyrif', ':', selectedSantri.kamars?.musyrifs?.nama || '-'],
+                    ['Nama', ':', selectedSantri.nama, 'Musyrif', ':', selectedSantri.kamars?.musyrifs?.nama || '-'],
                     ['Kelas', ':', selectedSantri.kelas_list?.nama_kelas || '-', 'Kamar', ':', selectedSantri.kamars?.nama_kamar || '-'],
                 ],
-                theme: 'plain',
-                styles: { fontSize: 9 },
-                columnStyles: { 0: { fontStyle: 'bold', cellWidth: 25 }, 1: { cellWidth: 5 }, 3: { fontStyle: 'bold', cellWidth: 25 }, 4: { cellWidth: 5 } }
+                theme: 'plain', styles: { fontSize: 8 },
+                columnStyles: { 0: { fontStyle: 'bold', cellWidth: 20 }, 1: { cellWidth: 5 }, 3: { fontStyle: 'bold', cellWidth: 20 }, 4: { cellWidth: 5 } }
             });
-
-            let currentY = (doc as any).lastAutoTable.finalY + 10;
-
-            // Visual Summary Circles in PDF
-            doc.setFontSize(14);
-            doc.setTextColor(26, 66, 103);
-            doc.text('RINGKASAN PENCAPAIAN', 14, currentY);
-            currentY += 10;
-
-            const circleSize = 25;
-            const spacing = 45;
+            let y = (doc as any).lastAutoTable.finalY + 10;
+            doc.setFontSize(13); doc.setTextColor(26, 66, 103); doc.text('RINGKASAN PENCAPAIAN', 14, y); y += 10;
+            const sz = 24; const perRow = 4;
             categoryReports.forEach((cat, idx) => {
-                const x = 30 + (idx * spacing);
-                const color = getProgressBarColor(cat.avg);
-                const rgb = hexToRgb(color);
-
-                // Draw circle
-                doc.setDrawColor(200);
-                doc.setFillColor(rgb.r, rgb.g, rgb.b);
-                doc.circle(x, currentY + circleSize / 2, circleSize / 2, 'F');
-
-                // Circle text
-                doc.setTextColor(255);
-                doc.setFontSize(8);
-                doc.text(cat.title, x, currentY + circleSize / 2 - 2, { align: 'center' });
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`${cat.avg.toFixed(1)}%`, x, currentY + circleSize / 2 + 4, { align: 'center' });
+                const row = Math.floor(idx / perRow); const col = idx % perRow;
+                const rw = Math.min(categoryReports.length - row * perRow, perRow) * 40;
+                const rx = (210 - rw) / 2 + 20; const x = rx + col * 40; const cy = y + row * 34;
+                const rgb = hexToRgb(getColor(cat.avg));
+                doc.setFillColor(rgb.r, rgb.g, rgb.b); doc.circle(x, cy + sz / 2, sz / 2, 'F');
+                doc.setTextColor(255); doc.setFontSize(6.5);
+                doc.text(cat.title, x, cy + sz / 2 - 2, { align: 'center', maxWidth: 18 });
+                doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+                doc.text(`${cat.avg.toFixed(1)}%`, x, cy + sz / 2 + 4, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
             });
-
-            currentY += circleSize + 15;
-
-            // Categories
-            for (const catReport of categoryReports) {
-                if (currentY > 240) {
-                    doc.addPage();
-                    currentY = 20;
-                }
-
-                doc.setFontSize(12);
-                doc.setTextColor(26, 66, 103);
-                doc.text(catReport.title.toUpperCase(), 14, currentY);
-                doc.setFontSize(9);
-                doc.text(`Rata-rata: ${catReport.avg.toFixed(1)}%`, 170, currentY);
-
-                autoTable(doc, {
-                    startY: currentY + 5,
-                    head: [['No', 'Pekan', 'Jumlah Record', '% Capaian']],
-                    body: catReport.weekly.map((w: any) => [w.no, w.pekan, w.jumlah, `${w.capaian.toFixed(1)}%`]),
-                    headStyles: { fillColor: [26, 66, 103] },
-                    styles: { fontSize: 8 }
-                });
-
-                currentY = (doc as any).lastAutoTable.finalY + 10;
-
-                autoTable(doc, {
-                    startY: currentY,
-                    head: [['No', 'Aktivitas / Kegiatan', 'Total Input', '% Keberhasilan']],
-                    body: catReport.items.map((i: any) => [i.no, i.aktivitas, i.jml, `${i.capaian.toFixed(1)}%`]),
-                    headStyles: { fillColor: [71, 85, 105] },
-                    styles: { fontSize: 8 }
-                });
-
-                currentY = (doc as any).lastAutoTable.finalY + 15;
+            y += (Math.ceil(categoryReports.length / perRow) * 34) + 8;
+            for (let i = 0; i < categoryReports.length; i += 2) {
+                const c1 = categoryReports[i]; const c2 = categoryReports[i + 1] || null;
+                if (y > 240) { doc.addPage(); y = 20; }
+                autoTable(doc, { startY: y, margin: { left: 14 }, tableWidth: 88, head: [[{ content: `% Capaian ${c1.title}`, colSpan: 3, styles: { halign: 'center', fillColor: [26, 66, 103] } }], ['No', 'Aktivitas', '%']], body: c1.items.map((it: any) => [it.no, it.aktivitas.length > 30 ? it.aktivitas.slice(0, 27) + '...' : it.aktivitas, `${it.capaian.toFixed(1)}%`]), styles: { fontSize: 7, cellPadding: 1 }, headStyles: { fillColor: [71, 85, 105] }, columnStyles: { 0: { cellWidth: 7 }, 2: { cellWidth: 15 } } });
+                let fy1 = (doc as any).lastAutoTable.finalY; let fy2 = fy1;
+                if (c2) { autoTable(doc, { startY: y, margin: { left: 108 }, tableWidth: 88, head: [[{ content: `% Capaian ${c2.title}`, colSpan: 3, styles: { halign: 'center', fillColor: [26, 66, 103] } }], ['No', 'Aktivitas', '%']], body: c2.items.map((it: any) => [it.no, it.aktivitas.length > 30 ? it.aktivitas.slice(0, 27) + '...' : it.aktivitas, `${it.capaian.toFixed(1)}%`]), styles: { fontSize: 7, cellPadding: 1 }, headStyles: { fillColor: [71, 85, 105] }, columnStyles: { 0: { cellWidth: 7 }, 2: { cellWidth: 15 } } }); fy2 = (doc as any).lastAutoTable.finalY; }
+                y = Math.max(fy1, fy2) + 14;
             }
-
-            const pageCount = (doc as any).internal.getNumberOfPages();
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(8);
-                doc.setTextColor(150);
-                doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 285);
-                doc.text(`Halaman ${i} dari ${pageCount}`, 196, 285, { align: 'right' });
-            }
-
-            doc.save(`Laporan_${selectedSantri.nama}_${monthStr}_${year}.pdf`);
-            showToast('PDF Berhasil diunduh', 'success');
-        } catch (err) {
-            console.error(err);
-            showToast('Gagal membuat PDF', 'error');
-        }
-    };
-
-    const hexToRgb = (hex: string) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : { r: 26, g: 66, b: 103 };
+            const pc = (doc as any).internal.getNumberOfPages();
+            for (let i = 1; i <= pc; i++) { doc.setPage(i); doc.setFontSize(7); doc.setTextColor(150); doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 14, 285); doc.text(`Hal ${i}/${pc}`, 196, 285, { align: 'right' }); }
+            doc.save(`Laporan_${selectedSantri.nama}_${monthStr}_${yr}.pdf`);
+            showToast('PDF berhasil diunduh', 'success');
+        } catch (e) { console.error(e); showToast('Gagal membuat PDF', 'error'); }
+        finally { setDownloading(false); }
     };
 
     return (
-        <div className="landing-page" style={{ minHeight: '100vh', background: 'var(--bg-main)' }}>
-            {/* Header / Navbar */}
-            <nav className="home-navbar">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ background: 'var(--primary-color)', padding: '0.5rem', borderRadius: '10px', color: 'white' }}>
-                        <LayoutDashboard size={24} />
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            {/* Navbar */}
+            <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+                <div className="max-w-5xl mx-auto px-4 h-[60px] flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
+                            <LayoutDashboard size={16} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-primary text-sm leading-tight">Pesantren Rabbaanii</h1>
+                            <p className="text-[10px] text-slate-400">Student Tracking System</p>
+                        </div>
                     </div>
-                    <div style={{ textAlign: 'left' }}>
-                        <h1 style={{ fontSize: '1.25rem', marginBottom: 0, fontWeight: 700 }}>Pesantren Rabbaanii</h1>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', marginTop: '-2px' }}>Student Tracking System</p>
-                    </div>
+                    <Link to="/login">
+                        <Button variant="primary" size="sm" icon={<LogIn size={14} />}>
+                            <span className="hidden sm:inline">Admin Login</span>
+                        </Button>
+                    </Link>
                 </div>
-                <Link to="/login" className="btn-save navbar-login" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.9rem',
-                    flexShrink: 0
-                }}>
-                    <LogIn size={20} /> <span className="login-text">Admin Login</span>
-                </Link>
-            </nav>
+            </header>
 
-            <main className="page-transition" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-                {/* Hero Section - Two column on desktop */}
-                <section className="landing-hero-grid" style={{ marginBottom: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center', paddingTop: '2rem' }}>
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 pb-12">
+                {/* Hero */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 items-start">
+                    {/* Left */}
                     <div>
-                        <h2 style={{ fontSize: '2.5rem', marginBottom: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, lineHeight: 1.2 }}>Pantau Perkembangan<br />Anak Anda</h2>
-                        <p style={{ fontSize: '1.1rem', color: 'var(--text-light)', maxWidth: '600px', marginBottom: '2rem', lineHeight: 1.6 }}>
+                        <h2 className="text-3xl md:text-4xl font-extrabold text-primary leading-tight mb-3">
+                            Pantau Perkembangan<br />Anak Anda
+                        </h2>
+                        <p className="text-slate-500 text-sm leading-relaxed mb-6">
                             Masukan nama santri untuk melihat laporan capaian adab, ibadah, dan kegiatan harian secara langsung melalui sistem monitoring Pesantren Rabbaanii.
                         </p>
-
-                        <form onSubmit={handleSearch} className="search-form-responsive" style={{ margin: '0 auto', maxWidth: '600px' }}>
-                            <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-                                <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} size={20} />
+                        <form onSubmit={handleSearch} className="flex gap-2">
+                            <div className="flex-1 relative">
+                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
-                                    className="form-control"
-                                    placeholder="Klik di sini, ketik nama santri..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    style={{
-                                        paddingLeft: '3rem',
-                                        height: '52px',
-                                        borderRadius: '14px',
-                                        fontSize: '1rem',
-                                        boxShadow: 'var(--shadow-md)',
-                                        border: '1px solid #cbd5e1',
-                                        backgroundColor: 'white',
-                                        width: '100%'
-                                    }}
+                                    placeholder="Klik di sini, ketik nama santri..."
+                                    className="w-full h-11 pl-10 pr-4 rounded-2xl border border-slate-200 bg-white text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                                 />
                             </div>
-                            <button type="submit" className="btn-primary search-btn" style={{ height: '52px', padding: '0 2.5rem', borderRadius: '14px', whiteSpace: 'nowrap' }}>
-                                {searching ? 'Mencari...' : 'Cari'}
-                            </button>
+                            <Button type="submit" loading={searching} size="md" className="rounded-2xl px-5">Cari</Button>
                         </form>
+
+                        {/* Search Results */}
                         {foundSantri.length > 0 && (
-                            <div style={{
-                                maxWidth: '100%',
-                                marginTop: '1rem',
-                                background: 'white',
-                                borderRadius: '14px',
-                                boxShadow: 'var(--shadow-lg)',
-                                border: '1px solid var(--border-color)',
-                                overflow: 'hidden',
-                                textAlign: 'left'
-                            }}>
+                            <div className="mt-2 bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden animate-slide-up">
                                 {foundSantri.map(s => (
-                                    <button
-                                        key={s.id}
-                                        onClick={() => selectSantri(s)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '1rem 1.5rem',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            background: 'none',
-                                            borderBottom: '1px solid var(--border-color)',
-                                            transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <div style={{ background: 'var(--secondary-color)', padding: '0.5rem', borderRadius: '8px' }}>
-                                                <User size={20} color="var(--primary-color)" />
-                                            </div>
-                                            <div>
-                                                <span style={{ fontWeight: 600, display: 'block' }}>{s.nama}</span>
-                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
-                                                    {s.kelas_list?.nama_kelas || '-'} • {s.kamars?.nama_kamar || '-'}
-                                                </span>
-                                            </div>
+                                    <button key={s.id} onClick={() => { setSelectedSantri(s); setFoundSantri([]); }}
+                                        className="flex items-center gap-3 w-full px-4 py-3 hover:bg-primary-light text-left transition-colors border-b border-slate-50 last:border-0">
+                                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                            <User size={13} className="text-primary" />
                                         </div>
-                                        <ChevronRight size={18} color="var(--text-light)" />
+                                        <div>
+                                            <p className="font-semibold text-slate-800 text-sm leading-tight">{s.nama}</p>
+                                            <p className="text-xs text-slate-400">{s.kelas_list?.nama_kelas || '-'} · {s.kamars?.nama_kamar || '-'}</p>
+                                        </div>
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* Right column: info cards */}
-                    <div className="landing-info-cards" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {[{ icon: '📖', title: 'Pantau Adab Harian', desc: 'Lihat capaian akhlak dan adab santri setiap harinya.' },
-                        { icon: '🕌', title: 'Rekap Ibadah', desc: 'Monitoring konsistensi ibadah santri setiap bulan.' },
-                        { icon: '📊', title: 'Laporan Bulanan', desc: 'Grafik dan tabel capaian otomatis tersedia dalam PDF.' }].map((item, i) => (
-                            <div key={i} style={{
-                                background: 'white',
-                                borderRadius: '16px',
-                                padding: '1.25rem 1.5rem',
-                                border: '1px solid var(--border-color)',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '1rem',
-                                boxShadow: 'var(--shadow-sm)'
-                            }}>
-                                <span style={{ fontSize: '1.75rem' }}>{item.icon}</span>
+                    {/* Right: Feature cards */}
+                    <div className="space-y-3 hidden md:block">
+                        {[
+                            { icon: BookOpen, title: 'Pantau Adab Harian', desc: 'Lihat capaian akhlak dan adab santri setiap harinya.' },
+                            { icon: LayoutDashboard, title: 'Rekap Ibadah', desc: 'Monitoring konsistensi ibadah santri setiap bulan.' },
+                            { icon: BarChart3, title: 'Laporan Bulanan', desc: 'Grafik dan tabel capaian otomatis tersedia dalam PDF.' },
+                        ].map(({ icon: Icon, title, desc }) => (
+                            <div key={title} className="flex items-center gap-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-card transition-shadow">
+                                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center shrink-0">
+                                    <Icon size={20} className="text-primary" />
+                                </div>
                                 <div>
-                                    <div style={{ fontWeight: 700, color: 'var(--primary-color)', marginBottom: '0.25rem' }}>{item.title}</div>
-                                    <div style={{ fontSize: '0.875rem', color: 'var(--text-light)', lineHeight: 1.5 }}>{item.desc}</div>
+                                    <p className="font-bold text-slate-800 text-sm">{title}</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </section>
+                </div>
 
-                {/* Dashboard Results */}
+                {/* Selected Santri Dashboard */}
                 {selectedSantri && (
-                    <div className="dashboard-card" style={{
-                        animation: 'fadeIn 0.5s ease-out',
-                        background: 'white',
-                        padding: '2rem',
-                        borderRadius: '24px',
-                        boxShadow: 'var(--shadow-lg)',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            flexWrap: 'wrap',
-                            gap: '1.5rem',
-                            marginBottom: '2.5rem'
-                        }}>
-                            <div style={{ flex: 1, minWidth: '280px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                                    <h3 style={{ fontSize: '1.75rem', marginBottom: 0 }}>{selectedSantri.nama}</h3>
-                                    <span style={{
-                                        background: 'var(--primary-color)',
-                                        color: 'white',
-                                        padding: '0.2rem 0.75rem',
-                                        borderRadius: '20px',
-                                        fontSize: '0.8rem',
-                                        whiteSpace: 'nowrap'
-                                    }}>SANTRI</span>
+                    <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 md:p-7 animate-slide-up">
+                        {/* Top row */}
+                        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-3">
+                                    <h3 className="text-xl md:text-2xl font-bold text-slate-800 break-words">{selectedSantri.nama}</h3>
+                                    <span className="px-2.5 py-0.5 bg-primary text-white text-xs font-semibold rounded-full shrink-0">SANTRI</span>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem', maxWidth: '500px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-light)' }}>
-                                        <GraduationCap size={18} /> <span>{selectedSantri.kelas_list?.nama_kelas || '-'}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-light)' }}>
-                                        <MapPin size={18} /> <span>{selectedSantri.kamars?.nama_kamar || '-'}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-light)' }}>
-                                        <User size={18} /> <span>Musyrif: {selectedSantri.kamars?.musyrifs?.nama || '-'}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-light)' }}>
-                                        <Calendar size={18} /> <span>{monthNames[parseInt(monthYear.split('-')[1]) - 1]} {monthYear.split('-')[0]}</span>
-                                    </div>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                                    {[
+                                        { icon: GraduationCap, label: selectedSantri.kelas_list?.nama_kelas || '-' },
+                                        { icon: MapPin, label: selectedSantri.kamars?.nama_kamar || '-' },
+                                        { icon: User, label: `Musyrif: ${selectedSantri.kamars?.musyrifs?.nama || '-'}` },
+                                        { icon: Calendar, label: `${monthNames[parseInt(monthYear.split('-')[1]) - 1]} ${monthYear.split('-')[0]}` },
+                                    ].map(({ icon: Icon, label }) => (
+                                        <div key={label} className="flex items-center gap-1.5 text-slate-500 text-sm">
+                                            <Icon size={15} className="shrink-0 text-slate-400" />
+                                            <span className="truncate">{label}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-
-                            <div className="action-buttons" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <input
-                                    type="month"
-                                    className="filter-select"
-                                    value={monthYear}
-                                    onChange={e => setMonthYear(e.target.value)}
-                                    style={{ height: '42px', borderRadius: '10px', width: 'auto' }}
-                                />
-                                <button className="btn-primary" onClick={generatePDF} style={{ height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto' }}>
-                                    <FileText size={18} /> Download Laporan
-                                </button>
+                            {/* Actions */}
+                            <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                <input type="month" value={monthYear} onChange={e => setMonthYear(e.target.value)}
+                                    className="h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all w-full sm:w-auto" />
+                                <Button icon={<FileText size={15} />} onClick={generatePDF} loading={downloading} fullWidth>
+                                    Download Laporan
+                                </Button>
                             </div>
                         </div>
 
+                        {/* Content */}
                         {loading ? (
-                            <div style={{ textAlign: 'center', padding: '5rem' }}>
-                                <Loader className="animate-spin" size={40} />
-                                <p style={{ marginTop: '1rem', color: 'var(--text-light)' }}>Memuat data pencapaian...</p>
-                            </div>
+                            <FullPageSpinner label="Memuat data pencapaian..." />
                         ) : categoryReports.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '5rem', background: '#f8fafc', borderRadius: '16px' }}>
-                                <LayoutDashboard size={48} color="#cbd5e1" style={{ marginBottom: '1rem' }} />
-                                <p style={{ color: 'var(--text-light)' }}>Belum ada data kegiatan untuk bulan ini.</p>
-                            </div>
+                            <EmptyState message="Belum ada data kegiatan untuk bulan ini." />
                         ) : (
-                            <div className="report-container" style={{ padding: 0, boxShadow: 'none', border: 'none' }}>
-                                {/* Circles Summary Grid */}
-                                <div className="report-grid-responsive" style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                                    gap: '1.5rem',
-                                    marginBottom: '3rem'
-                                }}>
-                                    {categoryReports.map((catReport) => (
-                                        <div key={`summary-${catReport.id}`} className="summary-card-responsive" style={{
-                                            background: '#f8fafc',
-                                            padding: '1.5rem',
-                                            borderRadius: '20px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '1.5rem',
-                                            border: '1px solid var(--border-color)'
-                                        }}>
-                                            <div className="chart-circle" style={{
-                                                backgroundColor: getProgressBarColor(catReport.avg),
-                                                width: '100px',
-                                                height: '100px',
-                                                flexShrink: 0
-                                            }}>
-                                                <span className="chart-circle-title" style={{ fontSize: '0.7rem' }}>Rata-Rata<br />{catReport.title}</span>
-                                                <span className="chart-circle-value" style={{ fontSize: '1.1rem' }}>{catReport.avg.toFixed(1)}%</span>
+                            <div className="space-y-6">
+                                {/* Summary circles */}
+                                <div className="flex flex-wrap gap-4">
+                                    {categoryReports.map(cat => (
+                                        <div key={cat.id} className="flex items-center gap-3 bg-slate-50 rounded-2xl p-3 flex-1 min-w-[200px] border border-slate-100">
+                                            <div className="w-16 h-16 rounded-full flex flex-col items-center justify-center text-white shrink-0"
+                                                style={{ backgroundColor: getColor(cat.avg) }}>
+                                                <span className="text-[9px] font-medium leading-tight text-center px-1">{cat.title}</span>
+                                                <span className="text-base font-bold">{cat.avg.toFixed(1)}%</span>
                                             </div>
-                                            <div style={{ flex: 1 }}>
-                                                <h4 style={{ marginBottom: '0.25rem' }}>{catReport.title}</h4>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
-                                                    {catReport.avg > 90 ? 'Sangat Memuaskan' : catReport.avg > 75 ? 'Perkembangan Baik' : 'Butuh Perhatian'}
-                                                </div>
+                                            <div>
+                                                <p className="font-bold text-slate-800 text-sm">{cat.title}</p>
+                                                <p className="text-xs text-slate-400">
+                                                    {cat.avg > 90 ? 'Sangat Memuaskan' : cat.avg > 75 ? 'Perkembangan Baik' : 'Butuh Perhatian'}
+                                                </p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                {/* Charts */}
-                                {categoryReports.map((catReport) => (
-                                    <div key={`chart-box-${catReport.id}`} style={{
-                                        marginBottom: '3rem',
-                                        background: 'white',
-                                        padding: '1.5rem',
-                                        borderRadius: '20px',
-                                        border: '1px solid var(--border-color)'
-                                    }}>
-                                        <h4 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: catReport.chartColor }}></div>
-                                            Grafik Harian {catReport.title}
+
+                                {/* Charts per category */}
+                                {categoryReports.map(cat => (
+                                    <div key={cat.id} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                        <h4 className="font-bold text-slate-700 text-sm mb-3 flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: cat.chartColor }} />
+                                            Grafik Harian {cat.title}
                                         </h4>
-                                        <div style={{ height: '200px', width: '100%' }}>
+                                        <div style={{ height: 180 }}>
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={catReport.chart}>
+                                                <BarChart data={cat.chart} margin={{ top: 5, right: 5, left: -24, bottom: 0 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                                                    <XAxis dataKey="day" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
                                                     <YAxis hide domain={[0, 100]} />
-                                                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
-                                                    <Bar dataKey="value" fill={catReport.chartColor} radius={[4, 4, 0, 0]} />
+                                                    <Tooltip formatter={(v: any) => [`${v}%`]} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 11 }} />
+                                                    <Bar dataKey="value" fill={cat.chartColor} radius={[3, 3, 0, 0]} />
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -639,37 +319,32 @@ const Home = () => {
                                 ))}
 
                                 {/* Legend */}
-                                <div className="legend">
-                                    <div className="legend-item bg-bad">0-40% Perlu Perbaikan</div>
-                                    <div className="legend-item bg-poor">41-60% Kurang</div>
-                                    <div className="legend-item bg-fair">61-75% Cukup</div>
-                                    <div className="legend-item bg-good">76-90% Baik</div>
-                                    <div className="legend-item bg-excellent">91-100% Sangat Baik</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {[['0–40%', 'bg-red-400'], ['41–60%', 'bg-orange-400'], ['61–75%', 'bg-amber-400'], ['76–90%', 'bg-blue-500'], ['91–100%', 'bg-emerald-500']].map(([l, bg]) => (
+                                        <span key={l} className={`${bg} text-white text-[10px] font-medium px-2 py-0.5 rounded-full`}>{l}</span>
+                                    ))}
                                 </div>
 
-                                {/* Tables */}
-                                <div className="progress-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                                    {categoryReports.map((catReport) => (
-                                        <div key={`table-pecah-${catReport.id}`}>
-                                            <h4 style={{ marginBottom: '1rem', color: 'var(--primary-color)', fontSize: '1.1rem' }}>Detail Capaian {catReport.title}</h4>
-                                            <div className="table-responsive">
-                                                <table className="progress-table" style={{ margin: 0 }}>
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={{ background: '#f8fafc', color: 'var(--text-main)', fontSize: '0.85rem' }}>Aktivitas</th>
-                                                            <th style={{ background: '#f8fafc', color: 'var(--text-main)', textAlign: 'center', fontSize: '0.85rem' }}>% Capaian</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {catReport.items.map((row: any) => (
-                                                            <tr key={`row-i-${row.no}`}>
-                                                                <td style={{ fontSize: '0.85rem', padding: '0.75rem' }}>{row.aktivitas}</td>
-                                                                <td style={{ padding: '0.5rem' }}><ProgressBar value={row.capaian} /></td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                {/* Detail tables: 2-col on desktop */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {categoryReports.map(cat => (
+                                        <div key={cat.id} className="overflow-hidden rounded-2xl border border-slate-200">
+                                            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+                                                <h4 className="font-bold text-primary text-sm">Detail Capaian {cat.title}</h4>
                                             </div>
+                                            <DataTable>
+                                                <thead><tr>
+                                                    <Th>Aktivitas</Th><Th className="w-36">% Capaian</Th>
+                                                </tr></thead>
+                                                <tbody>
+                                                    {cat.items.map((row: any) => (
+                                                        <Tr key={row.no}>
+                                                            <Td className="text-slate-700 text-xs leading-snug">{row.aktivitas}</Td>
+                                                            <Td><ProgressBar value={row.capaian} height="h-1.5" /></Td>
+                                                        </Tr>
+                                                    ))}
+                                                </tbody>
+                                            </DataTable>
                                         </div>
                                     ))}
                                 </div>
@@ -680,30 +355,17 @@ const Home = () => {
             </main>
 
             {/* Footer */}
-            <footer style={{
-                marginTop: '5rem',
-                padding: '3rem 2rem',
-                background: 'var(--primary-color)',
-                color: 'rgba(255,255,255,0.8)',
-                textAlign: 'center'
-            }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <h3 style={{ color: 'white', marginBottom: '1rem' }}>Pesantren Rabbaanii</h3>
-                    <p style={{ maxWidth: '600px', margin: '0 auto 2rem' }}>Memberikan pendidikan terbaik dengan sistem monitoring yang transparan untuk mencetak generasi Rabbani yang beradab dan berilmu.</p>
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem', fontSize: '0.85rem' }}>
-                        © {new Date().getFullYear()} Pesantren Rabbaanii. All rights reserved.
-                    </div>
+            <footer className="bg-primary text-white py-6 mt-auto">
+                <div className="max-w-5xl mx-auto px-4 text-center">
+                    <p className="font-bold text-base mb-1">Pesantren Rabbaanii</p>
+                    <p className="text-white/60 text-xs leading-relaxed max-w-md mx-auto">
+                        Memberikan pendidikan terbaik dengan sistem monitoring yang transparan untuk mencetak generasi Rabbani yang beradab dan berilmu.
+                    </p>
+                    <p className="text-white/30 text-[10px] mt-4">© {today.getFullYear()} Pesantren Rabbaanii. All rights reserved.</p>
                 </div>
             </footer>
 
-            {/* Toast */}
-            {toast && (
-                <div className={`alert-toast ${toast.type}`} style={{ zIndex: 1000 }}>
-                    {toast.type === 'success' ? '✓' : '✕'} {toast.message}
-                </div>
-            )}
+            <ToastContainer toasts={toasts} onClose={removeToast} />
         </div>
     );
-};
-
-export default Home;
+}
