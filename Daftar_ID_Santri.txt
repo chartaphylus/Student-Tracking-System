@@ -1,0 +1,262 @@
+=================================================
+          DAFTAR NAMA & ID SANTRI
+       PESANTREN RABBAANII ISLAMIC SCHOOL
+=================================================
+
+-------------------------------------------------
+ KELOMPOK: Kamar 204 (Musyrif: Ustadz Handzolah)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Abdul Hakim                      | cfae41b8
+2  | Abdullah Hisyam                  | ddf91144
+3  | Abdullah Ibrahim                 | 7142038b
+4  | Abdurrahman Affan Dani Hastanto  | 6df09bcd
+5  | Abqary Gulbubin Aljazari         | 971263d6
+6  | Abu Yaumil Ayyasha Akbar         | e8ae2ab9
+7  | Adam Abdulghaniy Sholeh          | b464bc5c
+8  | Bintara Abiseka Suyanto          | 0db9f2d7
+9  | Danish Guinandra Alfayed         | 64d81b5c
+10 | Nikko Hariz Maulana              | c6d6fc22
+
+-------------------------------------------------
+ KELOMPOK: Kamar 205 (Musyrif: Ustadz Handzolah)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Diandra Haqeem Kurniaputra       | c1ae4b3b
+2  | Fairuz Irsyad                    | db196a26
+3  | Faqih Zharal Fadhailillah        | d5eba25e
+4  | Farizky Mirza Ramadhan           | ea6dc2f6
+5  | Haikal Aditya Hidayat            | c3952d2d
+6  | Hamas Rafif Abdillah             | 935dadc3
+7  | Hanif Rasya Alvaro               | 32ba7142
+8  | Muhammad Harvi Fathurohman       | 20ad5d84
+9  | Muhammad Rasya Al Hakim          | 4dac4911
+10 | Rasyidinafi Gibran Syafiarso     | 7111f7e0
+
+-------------------------------------------------
+ KELOMPOK: Kamar 206 (Musyrif: Ustadz Hanif)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Farand Kennard Fauzi             | a024d34c
+2  | Mahardika Hilmi At Taqiy         | 87a63753
+3  | Muhamad Djibril Nurfaqih Aryanasetya | 0bd7343a
+4  | Muhammad Ahnaf Tarofa            | b84941e0
+5  | Muhammad Anugrah Suhenda         | 548b02e2
+6  | Muhammad Resya Al Hikam          | c457a0f3
+7  | Naufal Kenzie Al-Hafidz          | c480288f
+8  | Rakha Aprilio Wutabisu           | 3b043392
+9  | Syahdan Akira                    | 88e0b00b
+10 | Thufail Asyam                    | cde2e4a3
+
+-------------------------------------------------
+ KELOMPOK: Kamar 207 (Musyrif: Ustadz Hanif)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Ahmad Hafidz Al Jihad Sultan     | 14777a3e
+2  | Ahmad Syahmi Abyan               | 3c28a337
+3  | Al Mutsanna                      | 890d3655
+4  | Alfan Fauzan                     | 26d4a381
+5  | Kevin Rizky Febrian              | f821fb35
+6  | Nadir Galib Sambaga              | 095e63f3
+7  | Usamah                           | a7e537d5
+8  | Uwais Kenzie Al Baihaqi          | 2328378e
+9  | Yahya Aufa                       | fd110f04
+10 | Zaidan Luthfi Arifin             | ef55b997
+
+-------------------------------------------------
+ KELOMPOK: Kamar 208 (Musyrif: Ustadz Hanif)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Altair Adinata Wardana           | 429772dd
+2  | Alvaro Razak Purnomo             | 0e7fcba3
+3  | Fawwaz Azzubair                  | 7caa97b3
+4  | Fillio Nadzif Nurazmi            | e3301ff0
+5  | Hilmiy Aditya Pratama            | b633d49f
+6  | Ibrahim Tenma Al-Fathir          | ba682b66
+7  | Kenzie Wildan Kesuma             | f4e0c02e
+8  | Muhammad Fakhri Ramadhan         | 018562c4
+9  | Nafas Anugrah                    | 071e3f87
+10 | Umair                            | 56eec17d
+
+-------------------------------------------------
+ KELOMPOK: Kamar 209 (Musyrif: Ustadz Ilham)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Abdurrahman                      | 55ab6f3d
+2  | Hilmy Abdurrahman                | f0da2f6e
+3  | Hudzaifah Al Hafidz              | 50d24a2f
+4  | Juventinoval Zahy Rabbani        | cf509c92
+5  | Khalid Zhafran Ashshiddiq        | 2547496f
+6  | Muhammad Ghaisan Fathul Islam    | f5785b43
+7  | Muhammad Maulana Al Rasyid Sunzaya | 537c31fc
+
+-------------------------------------------------
+ KELOMPOK: Kamar 210 (Musyrif: Ustadz Ilham)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Airo Jibril Asqalani             | cd508f25
+2  | Hisyam                           | 1f2cc02d
+3  | Muhammad Gibran Altafandra       | eabd29f9
+4  | Muhammad Hilmy Adhinata          | 164b5d00
+5  | Muhammad Irfanov Alvin           | c99782d6
+6  | Muhammad Safaraz Omar Al Abrar   | b7b03818
+7  | Muhammad Siddiq Keitaro          | 37764fa9
+8  | Reza Putra Dwiyanto              | 227c4a5e
+9  | Sayyed Aryo Setyarto             | 13eb113e
+10 | Ukkasyah                         | b1c464d6
+
+-------------------------------------------------
+ KELOMPOK: Kamar 302 (Musyrif: Ustadz Daffa)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Ahmad Mua'dz Haidar              | b7fe5f90
+2  | Ali Muhammad Rabbani             | 5ee562ff
+3  | Ilyas                            | 40cdd6a8
+4  | Ilyas (11)                       | 86f09536
+5  | M. Fadhil Ammar S.               | 70cb70b6
+6  | Muhammad Faiz Abdurrahman        | f4f611ac
+7  | Muhammad Irsyaad Fadhilah        | 239613e0
+8  | Nauval Aliefky Arfiandany        | 531b29ad
+9  | Usamah Ibadurrohman              | c670f8b0
+
+-------------------------------------------------
+ KELOMPOK: Kamar 303 (Musyrif: Ustadz Imam Muwahhid)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Abdul Naser Sidqi                | 7ae7918e
+2  | Hanif Fawwaz Muyassar            | dd4e59ad
+3  | Muhammad Ardan Unais Albani      | 467fcccb
+4  | Muhammad Hadiid Permana          | c6287b84
+5  | Rezvan Haidar Awwal              | f993cdb5
+
+-------------------------------------------------
+ KELOMPOK: Kamar 304 (Musyrif: Ustadz Daffa)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Aufassaif Zaidan Shofwan         | 10aca415
+2  | Farriqul Ahad                    | 570bcd26
+3  | Firdhan Arshavin Baldan          | 3999c33c
+4  | Muhamad Abiy Restu Ramadhan      | 64aeca02
+5  | Muhammad Arfan Ataullah          | 718b0b1a
+6  | Muhammad Rayhan Adrian           | 1a148c54
+7  | Muhammad Zidane Alfadhil Ghani   | 0915b92f
+8  | Raynal Aldiansyah                | b10dc28e
+9  | Usamah Mubarak                   | 087bb764
+10 | Uwais Abdullah                   | 20a5cefb
+
+-------------------------------------------------
+ KELOMPOK: Kamar 305 (Musyrif: Ustadz Daffa)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Affan Rabbani                    | e142828f
+2  | Dafa Lukiaditya                  | 7062cc13
+3  | Dani Rezky Saputra               | d13b22b3
+4  | Faris Affandi                    | ef94c049
+5  | Muhammad Aidan Lutfan            | e7763b4e
+6  | Muhammad Daffa Raissa Pratama    | 56a6ad79
+7  | Muhammad Fathurrahman            | 706645d8
+8  | Rasyid Abdul Qowiy               | 983969b0
+9  | Waldan Al Fa'iq                  | d9522a63
+10 | Zahid Hanif Rasyid               | 91531ada
+
+-------------------------------------------------
+ KELOMPOK: Kamar 306 (Musyrif: Ustadz Abdul Khalid)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Ananda Pratama Putra             | f463fe0c
+2  | Athallah Widyadana Abiyu         | f440273e
+3  | Aufar Sholahal Hirzi             | a4adf501
+4  | Azzam Hibatullah Akrom           | 96eebc89
+5  | Dzaka Ziyad Muhaisin             | 1060448e
+6  | Dzakky Abdul Najiib              | 1a11d833
+7  | Emil King Hanif Rahimi           | d4e5ef99
+8  | Muhammad Raizzain Fadhil Abdillah | 532717e9
+9  | Muhammad Sae Alfian              | e6116bc1
+10 | Zaidan Athollah Al Fadhil        | 17f178c3
+
+-------------------------------------------------
+ KELOMPOK: Kamar 307 (Musyrif: Ustadz Abdul Khalid)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Ananda Fierza Muhamad Valdan     | c00e4d21
+2  | Fachreza Zaydan Arifie           | 78aefb8f
+3  | Muhammad Anas Naufa              | c93a2185
+4  | Muhammad Faiz Khairul Azzam      | 7bd0a890
+5  | Muhammad Jovan Triyadi           | 79d83dbb
+6  | Rafa Filzah Asyadda              | 0f8b6885
+7  | Rafiansyah Al Kausar             | a917a54d
+8  | Rasya Aditya Pramono             | f57db69f
+9  | Rasyid Dhiyarsa                  | 31651526
+10 | Umar Khairun Nizam               | 42437fa7
+
+-------------------------------------------------
+ KELOMPOK: Kamar 308 (Musyrif: Ustadz Ibrahim Ahsan)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Ammar Naufal Prasetyo            | 01469564
+2  | Ghailan Azri Rabbani             | 2026ef73
+3  | Giovara Alfarizy                 | 51c82297
+4  | Haidar Hilmi Zulfiqar            | 68591643
+5  | Humam Abdad Arsalan              | e84e66ea
+6  | Khairul Anam Alkhadhi            | b369ae64
+7  | Muhammad Ukasyah Nur Hanif       | 77e042ed
+8  | Muhammad Yazid Zidane            | 778dd466
+9  | Rayyis Ammar                     | 9144b546
+10 | Richie Naufal Fadhillah          | ca87d91f
+
+-------------------------------------------------
+ KELOMPOK: Kamar 309 (Musyrif: Ustadz Ibrahim Ahsan)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Adlan Assajid Isnarto            | 048fa4ca
+2  | Afif Rasyiqul Ahwal              | 41069049
+3  | Ahnaffi Arkan Ramadhan           | f483e3aa
+4  | Alfaridzy Januar Handiansyah     | 8528d21e
+5  | Fachrizal Maulana                | 377d7140
+6  | Muhammad Rafly Az-Zikri          | d73f5d17
+7  | Shafwan Tsaaqif Ulayya           | 3acbec88
+8  | Usamah Farras Mufid              | 9232f45c
+
+-------------------------------------------------
+ KELOMPOK: Kamar 310 (Musyrif: Ustadz Zakaria)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Abdullah Ammaar                  | 7b9afd39
+2  | Ardan Muhammad Kautsar           | b8a68d24
+3  | Arshada Chavaro Milan            | b4049550
+4  | Avicena Akbar Machfud            | c9b969ff
+5  | Fauzan Abdur Rahman              | 22c1f348
+6  | Khaerul Azam                     | cae8601a
+7  | Muhammad Gibran                  | 0769eab5
+8  | Muhammad Hafizh Mufid            | fc009a8e
+9  | Muhammad Javas Arkafi            | 7dfdad28
+10 | Naufal Zhafif Maulana            | 24de859e
+
+-------------------------------------------------
+ KELOMPOK: Kamar 311 (Musyrif: Ustadz Zakaria)
+-------------------------------------------------
+No | Nama Santri                       | ID Singkat
+--------------------------------------------------
+1  | Harry Mugni Raditya Bijak        | c5169301
+2  | Hudzaifah                        | 1b6708f9
+3  | Hudzaifah (9)                    | 10e3888f
+4  | Ishaq Abdirrohim                 | 28797884
+5  | Muhammad Fatih                   | 1c9c8fcc
+6  | Nawwaf Ahmad Syaatir             | 263db4e8
+7  | Rei Abduzzhohir                  | beae6713

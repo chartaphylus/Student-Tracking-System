@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, ClipboardList, BarChart3, Database, LogOut, LayoutGrid } from 'lucide-react';
+import { Users, BookOpen, ClipboardList, BarChart3, Database, LogOut } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const navItems = [
@@ -24,8 +24,8 @@ export default function Sidebar() {
             <aside className="hidden md:flex flex-col w-64 min-h-screen bg-primary shrink-0 shadow-sidebar">
                 {/* Logo */}
                 <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                        <LayoutGrid size={20} className="text-white" />
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden shrink-0">
+                        <img src="/logo.png" alt="Logo" className="w-full h-full object-contain p-1" />
                     </div>
                     <div>
                         <h2 className="text-white font-bold text-sm leading-tight">Pesantren</h2>
@@ -72,8 +72,8 @@ export default function Sidebar() {
             {/* ── Mobile Top Bar ── */}
             <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-primary px-4 h-14 flex items-center justify-between shadow-md">
                 <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
-                        <LayoutGrid size={14} className="text-white" />
+                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0">
+                        <img src="/logo.png" alt="Logo" className="w-full h-full object-contain p-0.5" />
                     </div>
                     <span className="text-white font-bold text-sm">IbadahKu</span>
                 </div>

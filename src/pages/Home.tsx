@@ -36,14 +36,25 @@ export default function Home() {
 
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!searchTerm.trim()) return showToast('Masukkan nama santri', 'error');
+        const term = searchTerm.trim().toLowerCase();
+        if (!term) return showToast('Masukkan nama atau ID santri', 'error');
         setSearching(true); setSelectedSantri(null); setCategoryReports([]); setFoundSantri([]);
         try {
+            // Fetch all entries, then filter locally. Supabase / Postgres UUID column doesn't support short string partial matches directly.
             const { data, error } = await supabase.from('santri')
                 .select('id, nama, kelas_id, kamar_id, kelas_list(nama_kelas), kamars(id, nama_kamar, musyrif_id, musyrifs(nama))')
-                .ilike('nama', `%${searchTerm.trim()}%`).limit(10);
+                .order('nama');
+
             if (error) showToast(`Gagal mencari: ${error.message}`, 'error');
-            else { setFoundSantri(data || []); if (!data?.length) showToast('Santri tidak ditemukan.', 'error'); }
+            else {
+                const filtered = (data || []).filter(s =>
+                    s.nama.toLowerCase().includes(term) ||
+                    s.id.toLowerCase().includes(term)
+                ).slice(0, 10);
+
+                setFoundSantri(filtered);
+                if (!filtered.length) showToast('Santri tidak ditemukan.', 'error');
+            }
         } catch { showToast('Terjadi kesalahan koneksi', 'error'); }
         finally { setSearching(false); }
     };
@@ -153,16 +164,23 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
+            {/* Decorative Background */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-400/10 blur-[120px]" />
+                <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/10 blur-[120px]" />
+                <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] rounded-full bg-blue-300/10 blur-[100px]" />
+            </div>
+
             {/* Navbar */}
-            <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
-                <div className="max-w-5xl mx-auto px-4 h-[60px] flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
-                            <LayoutDashboard size={16} className="text-white" />
+            <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+                <div className="max-w-5xl mx-auto px-4 h-[72px] flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-slate-100 p-1">
+                            <img src="/logo.png" alt="Logo Pesantren Rabbaanii" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <h1 className="font-bold text-primary text-sm leading-tight">Pesantren Rabbaanii</h1>
-                            <p className="text-[10px] text-slate-400">Student Tracking System</p>
+                            <h1 className="font-extrabold text-primary text-base sm:text-lg leading-tight tracking-tight">Pesantren Rabbaanii</h1>
+                            <p className="text-[10px] sm:text-xs text-slate-500 font-medium tracking-wide uppercase">Student Tracking System</p>
                         </div>
                     </div>
                     <Link to="/login">
@@ -173,16 +191,23 @@ export default function Home() {
                 </div>
             </header>
 
-            <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 pb-12">
+            <main className="relative z-10 flex-1 w-full max-w-5xl mx-auto px-4 py-8 pb-12 sm:py-12">
                 {/* Hero */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 mb-14 items-center">
                     {/* Left */}
                     <div>
-                        <h2 className="text-3xl md:text-4xl font-extrabold text-primary leading-tight mb-3">
-                            Pantau Perkembangan<br />Anak Anda
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-semibold mb-6 shadow-sm">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                            </span>
+                            Sistem Monitoring Aktif
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 leading-[1.15] tracking-tight mb-5">
+                            Pantau Perkembangan <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Anak Anda</span>
                         </h2>
-                        <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                            Masukan nama santri untuk melihat laporan capaian adab, ibadah, dan kegiatan harian secara langsung melalui sistem monitoring Pesantren Rabbaanii.
+                        <p className="text-slate-500 text-base leading-relaxed mb-8 max-w-lg">
+                            Masukan nama atau ID santri (kode unik 8 karakter) untuk melihat laporan capaian adab, ibadah, dan kegiatan harian secara langsung melalui sistem monitoring Pesantren Rabbaanii.
                         </p>
                         <form onSubmit={handleSearch} className="flex gap-2">
                             <div className="flex-1 relative">
@@ -191,8 +216,8 @@ export default function Home() {
                                     type="text"
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    placeholder="Klik di sini, ketik nama santri..."
-                                    className="w-full h-11 pl-10 pr-4 rounded-2xl border border-slate-200 bg-white text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                                    placeholder="Ketik nama atau ID santri di sini..."
+                                    className="w-full h-12 md:h-14 pl-11 pr-4 rounded-2xl border-2 border-slate-200/60 bg-white/80 backdrop-blur-sm text-sm font-medium shadow-sm hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
                                 />
                             </div>
                             <Button type="submit" loading={searching} size="md" className="rounded-2xl px-5">Cari</Button>
@@ -209,7 +234,8 @@ export default function Home() {
                                         </div>
                                         <div>
                                             <p className="font-semibold text-slate-800 text-sm leading-tight">{s.nama}</p>
-                                            <p className="text-xs text-slate-400">{s.kelas_list?.nama_kelas || '-'} · {s.kamars?.nama_kamar || '-'}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">ID: {s.id.slice(0, 8)}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{s.kelas_list?.nama_kelas || '-'} · {s.kamars?.nama_kamar || '-'}</p>
                                         </div>
                                     </button>
                                 ))}
@@ -217,20 +243,19 @@ export default function Home() {
                         )}
                     </div>
 
-                    {/* Right: Feature cards */}
-                    <div className="space-y-3 hidden md:block">
+                    <div className="space-y-4 hidden md:flex flex-col justify-center">
                         {[
-                            { icon: BookOpen, title: 'Pantau Adab Harian', desc: 'Lihat capaian akhlak dan adab santri setiap harinya.' },
-                            { icon: LayoutDashboard, title: 'Rekap Ibadah', desc: 'Monitoring konsistensi ibadah santri setiap bulan.' },
-                            { icon: BarChart3, title: 'Laporan Bulanan', desc: 'Grafik dan tabel capaian otomatis tersedia dalam PDF.' },
-                        ].map(({ icon: Icon, title, desc }) => (
-                            <div key={title} className="flex items-center gap-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-card transition-shadow">
-                                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center shrink-0">
-                                    <Icon size={20} className="text-primary" />
+                            { icon: BookOpen, title: 'Adab & Akhlak Harian', desc: 'Pemantauan sikap, kedisiplinan, dan etika santri dalam kesehariannya.', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                            { icon: LayoutDashboard, title: 'Rekap Ibadah Wajib', desc: 'Monitoring konsistensi ibadah harian seperti shalat jamaah dan tilawah.', color: 'text-blue-500', bg: 'bg-blue-50' },
+                            { icon: BarChart3, title: 'Laporan Perkembangan', desc: 'Akses laporan komprehensif dalam bentuk grafik interaktif dan PDF.', color: 'text-primary', bg: 'bg-primary/10' },
+                        ].map(({ icon: Icon, title, desc, color, bg }) => (
+                            <div key={title} className="group relative flex items-start gap-5 bg-white/60 backdrop-blur-md rounded-3xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:bg-white hover:-translate-y-1 transition-all duration-300">
+                                <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                                    <Icon size={24} className={color} />
                                 </div>
-                                <div>
-                                    <p className="font-bold text-slate-800 text-sm">{title}</p>
-                                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                <div className="pt-1">
+                                    <p className="font-extrabold text-slate-800 text-base mb-1">{title}</p>
+                                    <p className="text-sm text-slate-500 leading-relaxed">{desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -355,10 +380,13 @@ export default function Home() {
             </main>
 
             {/* Footer */}
-            <footer className="bg-primary text-white py-6 mt-auto">
-                <div className="max-w-5xl mx-auto px-4 text-center">
-                    <p className="font-bold text-base mb-1">Pesantren Rabbaanii</p>
-                    <p className="text-white/60 text-xs leading-relaxed max-w-md mx-auto">
+            <footer className="relative z-10 bg-slate-900 text-white py-12 mt-auto">
+                <div className="max-w-5xl mx-auto px-4 flex flex-col items-center text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-800 flex items-center justify-center overflow-hidden mb-6 shadow-xl p-1.5">
+                        <img src="/logo.png" alt="Logo Pesantren Rabbaanii" className="w-full h-full object-contain" />
+                    </div>
+                    <p className="font-extrabold text-xl mb-2 tracking-tight">Pesantren Rabbaanii</p>
+                    <p className="text-slate-400 text-sm leading-relaxed max-w-md mx-auto">
                         Memberikan pendidikan terbaik dengan sistem monitoring yang transparan untuk mencetak generasi Rabbani yang beradab dan berilmu.
                     </p>
                     <p className="text-white/30 text-[10px] mt-4">© {today.getFullYear()} Pesantren Rabbaanii. All rights reserved.</p>
