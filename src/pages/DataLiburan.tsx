@@ -14,7 +14,7 @@ import { useToast } from '../hooks/useToast';
 const inputCls = `w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm
   focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:bg-white transition-all`;
 
-export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
+export default function DataLiburan({ musyrifId }: { musyrifId?: string }) {
     const [categories, setCategories] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -24,6 +24,7 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
     const [isActModalOpen, setIsActModalOpen] = useState(false);
     const [editingActId, setEditingActId] = useState<string | null>(null);
     const [namaAct, setNamaAct] = useState('');
+    const [tipeInputAct, setTipeInputAct] = useState('checkbox');
     const [selectedCatId, setSelectedCatId] = useState('');
 
     // Category modal
@@ -41,10 +42,20 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
     const fetchData = async () => {
         setLoading(true);
         const [catRes, actRes] = await Promise.all([
-            supabase.from('kategori_kegiatan').select('*').order('created_at'),
-            supabase.from('kegiatan').select('*').order('created_at'),
+            supabase.from('kategori_liburan').select('*').order('created_at'),
+            supabase.from('item_liburan').select('*').order('created_at'),
         ]);
-        if (catRes.data) { setCategories(catRes.data); if (catRes.data[0] && activeCategoryId === 'all') setActiveCategoryId(catRes.data[0].id); }
+
+        if (catRes.error && catRes.error.code === '42P01') {
+            showToast('Tabel kategori_liburan belum dibuat di DB.', 'error');
+            setLoading(false);
+            return;
+        }
+
+        if (catRes.data) {
+            setCategories(catRes.data);
+            if (catRes.data[0] && activeCategoryId === 'all') setActiveCategoryId(catRes.data[0].id);
+        }
         if (actRes.data) setActivities(actRes.data);
         setLoading(false);
     };
@@ -55,7 +66,7 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
     const handleSaveCat = async (e: React.FormEvent) => {
         e.preventDefault(); setSubmitting(true);
         const payload = { nama_kategori: namaCat };
-        const fn = editingCatId ? supabase.from('kategori_kegiatan').update(payload).eq('id', editingCatId) : supabase.from('kategori_kegiatan').insert([payload]);
+        const fn = editingCatId ? supabase.from('kategori_liburan').update(payload).eq('id', editingCatId) : supabase.from('kategori_liburan').insert([payload]);
         const { error } = await fn;
         if (error) showToast('Gagal: ' + error.message, 'error');
         else { showToast(editingCatId ? 'Kategori diperbarui' : 'Kategori ditambahkan', 'success'); setIsCatModalOpen(false); fetchData(); }
@@ -64,30 +75,42 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
     const handleDeleteCat = async () => {
         if (!confirmDelete || confirmDelete.type !== 'category') return;
         setSubmitting(true);
-        const { error } = await supabase.from('kategori_kegiatan').delete().eq('id', confirmDelete.id);
+        const { error } = await supabase.from('kategori_liburan').delete().eq('id', confirmDelete.id);
         if (error) showToast('Gagal hapus: ' + error.message, 'error');
         else { showToast('Kategori dihapus', 'success'); fetchData(); }
         setSubmitting(false); setConfirmDelete(null);
     };
 
     // Activity CRUD
-    const openAddAct = (catId: string) => { setEditingActId(null); setNamaAct(''); setSelectedCatId(catId); setIsActModalOpen(true); };
-    const openEditAct = (id: string, nama: string, catId: string) => { setEditingActId(id); setNamaAct(nama); setSelectedCatId(catId); setIsActModalOpen(true); };
+    const openAddAct = (catId: string) => {
+        setEditingActId(null);
+        setNamaAct('');
+        setTipeInputAct('checkbox');
+        setSelectedCatId(catId);
+        setIsActModalOpen(true);
+    };
+    const openEditAct = (id: string, nama: string, tipe: string, catId: string) => {
+        setEditingActId(id);
+        setNamaAct(nama);
+        setTipeInputAct(tipe);
+        setSelectedCatId(catId);
+        setIsActModalOpen(true);
+    };
     const handleSaveAct = async (e: React.FormEvent) => {
         e.preventDefault(); setSubmitting(true);
-        const payload = { nama_kegiatan: namaAct, kategori_id: selectedCatId };
-        const fn = editingActId ? supabase.from('kegiatan').update(payload).eq('id', editingActId) : supabase.from('kegiatan').insert([payload]);
+        const payload = { nama_item: namaAct, tipe_input: tipeInputAct, kategori_id: selectedCatId };
+        const fn = editingActId ? supabase.from('item_liburan').update(payload).eq('id', editingActId) : supabase.from('item_liburan').insert([payload]);
         const { error } = await fn;
         if (error) showToast('Gagal: ' + error.message, 'error');
-        else { showToast(editingActId ? 'Kegiatan diperbarui' : 'Kegiatan ditambahkan', 'success'); setIsActModalOpen(false); fetchData(); }
+        else { showToast(editingActId ? 'Item diperbarui' : 'Item ditambahkan', 'success'); setIsActModalOpen(false); fetchData(); }
         setSubmitting(false);
     };
     const handleDeleteAct = async () => {
         if (!confirmDelete || confirmDelete.type !== 'activity') return;
         setSubmitting(true);
-        const { error } = await supabase.from('kegiatan').delete().eq('id', confirmDelete.id);
+        const { error } = await supabase.from('item_liburan').delete().eq('id', confirmDelete.id);
         if (error) showToast('Gagal hapus: ' + error.message, 'error');
-        else { showToast('Kegiatan dihapus', 'success'); fetchData(); }
+        else { showToast('Item dihapus', 'success'); fetchData(); }
         setSubmitting(false); setConfirmDelete(null);
     };
 
@@ -96,9 +119,8 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
     return (
         <div>
             {!musyrifId && (
-                <PageHeader title="Setup Kegiatan Asrama" subtitle="Kelola kategori dan daftar kegiatan harian santri." />
+                <PageHeader title="Setup Item Liburan" subtitle="Konfigurasi kategori dan item kegiatan harian selama masa liburan." />
             )}
-
             {loading ? <FullPageSpinner label="Memuat data..." /> : (
                 <>
                     {/* Controls bar */}
@@ -116,7 +138,7 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
                     </div>
 
                     {categories.length === 0 ? (
-                        <EmptyState message="Belum ada kategori. Tambahkan kategori pertama." />
+                        <EmptyState message="Belum ada kategori kegiatan liburan. Tambahkan kategori pertama." />
                     ) : (
                         <div className="space-y-5">
                             {visibleCategories.map(cat => {
@@ -131,11 +153,11 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
                                                     {catActs.length} item
                                                 </span>
                                                 <button onClick={() => openEditCat(cat.id, cat.nama_kategori)}
-                                                    className="p-1 rounded-lg hover:bg-primary-light text-slate-400 hover:text-primary transition-colors">
+                                                    className="p-1 rounded-lg hover:bg-primary-light text-slate-400 hover:text-primary transition-colors" title="Edit Kategori">
                                                     <Settings size={14} />
                                                 </button>
                                                 <button onClick={() => setConfirmDelete({ id: cat.id, nama: cat.nama_kategori, type: 'category' })}
-                                                    className="p-1 rounded-lg hover:bg-danger/10 text-slate-400 hover:text-danger transition-colors">
+                                                    className="p-1 rounded-lg hover:bg-danger/10 text-slate-400 hover:text-danger transition-colors" title="Hapus Kategori">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
@@ -145,13 +167,14 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
                                         </div>
 
                                         {catActs.length === 0 ? (
-                                            <EmptyState message={`Belum ada kegiatan untuk ${cat.nama_kategori}`} />
+                                            <EmptyState message={`Belum ada form item untuk ${cat.nama_kategori}`} />
                                         ) : (
                                             <DataTable>
                                                 <thead>
                                                     <tr>
                                                         <Th className="w-12">No</Th>
-                                                        <Th>Nama Kegiatan</Th>
+                                                        <Th>Nama Info/Kegiatan</Th>
+                                                        <Th>Jenis Input</Th>
                                                         <Th className="text-right">Aksi</Th>
                                                     </tr>
                                                 </thead>
@@ -159,14 +182,19 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
                                                     {catActs.map((act, i) => (
                                                         <Tr key={act.id}>
                                                             <Td className="text-slate-400 text-xs">{i + 1}</Td>
-                                                            <Td className="font-medium text-slate-800">{act.nama_kegiatan}</Td>
+                                                            <Td className="font-medium text-slate-800">{act.nama_item}</Td>
+                                                            <Td>
+                                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${act.tipe_input === 'text' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                                    {act.tipe_input === 'text' ? 'Teks Input' : 'Check Item'}
+                                                                </span>
+                                                            </Td>
                                                             <Td className="text-right">
                                                                 <div className="flex items-center justify-end gap-1.5">
-                                                                    <button onClick={() => openEditAct(act.id, act.nama_kegiatan, cat.id)}
+                                                                    <button onClick={() => openEditAct(act.id, act.nama_item, act.tipe_input, cat.id)}
                                                                         className="p-1.5 rounded-lg hover:bg-primary-light text-slate-400 hover:text-primary transition-colors">
                                                                         <Edit2 size={14} />
                                                                     </button>
-                                                                    <button onClick={() => setConfirmDelete({ id: act.id, nama: act.nama_kegiatan, type: 'activity' })}
+                                                                    <button onClick={() => setConfirmDelete({ id: act.id, nama: act.nama_item, type: 'activity' })}
                                                                         className="p-1.5 rounded-lg hover:bg-danger/10 text-slate-400 hover:text-danger transition-colors">
                                                                         <Trash2 size={14} />
                                                                     </button>
@@ -186,11 +214,11 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
             )}
 
             {/* Category Modal */}
-            <Modal open={isCatModalOpen} onClose={() => setIsCatModalOpen(false)} title={`${editingCatId ? 'Edit' : 'Tambah'} Kategori`}>
+            <Modal open={isCatModalOpen} onClose={() => setIsCatModalOpen(false)} title={`${editingCatId ? 'Edit' : 'Tambah'} Kategori Liburan`}>
                 <form onSubmit={handleSaveCat} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Nama Kategori</label>
-                        <input type="text" required autoFocus placeholder="Misal: Adab, Ibadah, Tahfidz"
+                        <input type="text" required autoFocus placeholder="Misal: Kegiatan Mengaji, Berbakti Kepada Orang Tua"
                             className={inputCls} value={namaCat} onChange={e => setNamaCat(e.target.value)} />
                     </div>
                     <div className="flex gap-3 pt-2">
@@ -201,7 +229,7 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
             </Modal>
 
             {/* Activity Modal */}
-            <Modal open={isActModalOpen} onClose={() => setIsActModalOpen(false)} title={`${editingActId ? 'Edit' : 'Tambah'} Kegiatan`}>
+            <Modal open={isActModalOpen} onClose={() => setIsActModalOpen(false)} title={`${editingActId ? 'Edit' : 'Tambah'} Item Liburan`}>
                 <form onSubmit={handleSaveAct} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Masuk ke Kategori</label>
@@ -210,8 +238,15 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Nama Kegiatan</label>
-                        <input type="text" required autoFocus className={inputCls} value={namaAct} onChange={e => setNamaAct(e.target.value)} />
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Nama Kegiatan (Pertanyaan)</label>
+                        <input type="text" required autoFocus className={inputCls} placeholder="Misal: Sholat Subuh" value={namaAct} onChange={e => setNamaAct(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Jenis Input</label>
+                        <select required className={inputCls} value={tipeInputAct} onChange={e => setTipeInputAct(e.target.value)}>
+                            <option value="checkbox">Checklist (Ya/Tidak Berupa Centang)</option>
+                            <option value="text">Isian Teks Singkat (Misal: dari mana sampai mana)</option>
+                        </select>
                     </div>
                     <div className="flex gap-3 pt-2">
                         <Button type="button" variant="outline" fullWidth onClick={() => setIsActModalOpen(false)} disabled={submitting}>Batal</Button>
@@ -226,8 +261,8 @@ export default function DataAdabIbadah({ musyrifId }: { musyrifId?: string }) {
                 onConfirm={confirmDelete?.type === 'category' ? handleDeleteCat : handleDeleteAct}
                 loading={submitting}
                 message={confirmDelete?.type === 'category'
-                    ? `Yakin hapus kategori "${confirmDelete?.nama}"? Semua kegiatan di dalamnya akan ikut terhapus.`
-                    : `Yakin hapus kegiatan "${confirmDelete?.nama}"?`}
+                    ? `Yakin hapus kategori "${confirmDelete?.nama}"? Semua formulir di dalamnya akan terhapus juga.`
+                    : `Yakin hapus item "${confirmDelete?.nama}"?`}
             />
             <ToastContainer toasts={toasts} onClose={removeToast} />
         </div>

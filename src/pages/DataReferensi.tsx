@@ -30,6 +30,8 @@ export default function DataReferensi() {
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; nama: string } | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [nama, setNama] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
     const [selectedMusyrifId, setSelectedMusyrifId] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -62,10 +64,12 @@ export default function DataReferensi() {
     const totalPages = Math.max(1, Math.ceil(activeList.length / ITEMS_PER_PAGE));
     const paginatedItems = activeList.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-    const handleOpenAdd = () => { setEditingId(null); setNama(''); setSelectedMusyrifId(''); setIsModalOpen(true); };
+    const handleOpenAdd = () => { setEditingId(null); setNama(''); setUsername(''); setPassword(''); setSelectedMusyrifId(''); setIsModalOpen(true); };
     const handleOpenEdit = (item: any) => {
         setEditingId(item.id);
         setNama(activeTab === 'kelas' ? item.nama_kelas : activeTab === 'musyrif' ? item.nama : item.nama_kamar);
+        setUsername(item.username || '');
+        setPassword(item.password || '');
         setSelectedMusyrifId(item.musyrif_id || '');
         setIsModalOpen(true);
     };
@@ -88,7 +92,7 @@ export default function DataReferensi() {
         const payload: any = activeTab === 'kelas'
             ? { nama_kelas: nama }
             : activeTab === 'musyrif'
-                ? { nama }
+                ? { nama, username, password }
                 : { nama_kamar: nama, musyrif_id: selectedMusyrifId || null };
 
         const fn = editingId
@@ -105,7 +109,7 @@ export default function DataReferensi() {
 
     return (
         <div>
-            <PageHeader title="Data Referensi" subtitle="Kelola Musyrif, Kamar, dan Kelas." />
+            <PageHeader title="Master Data Referensi" subtitle="Kelola daftar Musyrif, Kamar (Asrama), dan Kelas." />
 
             {/* Tabs */}
             <div className="flex gap-1 bg-slate-100 rounded-2xl p-1 mb-5 w-fit">
@@ -114,8 +118,8 @@ export default function DataReferensi() {
                         key={t}
                         onClick={() => setActiveTab(t)}
                         className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === t
-                                ? 'bg-white text-primary shadow-card'
-                                : 'text-slate-500 hover:text-slate-700'
+                            ? 'bg-white text-primary shadow-card'
+                            : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         {t === 'musyrif' ? 'Musyrif' : t === 'kamar' ? 'Kamar' : 'Kelas'}
@@ -142,6 +146,8 @@ export default function DataReferensi() {
                                 <tr>
                                     <Th className="w-12">No</Th>
                                     <Th>Nama</Th>
+                                    {activeTab === 'musyrif' && <Th>Username</Th>}
+                                    {activeTab === 'musyrif' && <Th>Password</Th>}
                                     {activeTab === 'kamar' && <Th>Musyrif</Th>}
                                     <Th className="text-right">Aksi</Th>
                                 </tr>
@@ -155,6 +161,12 @@ export default function DataReferensi() {
                                         <Tr key={item.id}>
                                             <Td className="text-slate-400 text-xs">{(currentPage - 1) * ITEMS_PER_PAGE + i + 1}</Td>
                                             <Td className="font-medium text-slate-800">{name}</Td>
+                                            {activeTab === 'musyrif' && (
+                                                <>
+                                                    <Td className="text-xs text-slate-500 font-mono">{item.username || '-'}</Td>
+                                                    <Td className="text-xs text-slate-500 font-mono">{item.password || '-'}</Td>
+                                                </>
+                                            )}
                                             {activeTab === 'kamar' && (
                                                 <Td>
                                                     <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-lg">
@@ -204,6 +216,20 @@ export default function DataReferensi() {
                             </select>
                         </div>
                     )}
+                    {activeTab === 'musyrif' && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+                                <input type="text" required className={inputCls} placeholder="Username login..."
+                                    value={username} onChange={e => setUsername(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                                <input type="text" required className={inputCls} placeholder="Password login..."
+                                    value={password} onChange={e => setPassword(e.target.value)} />
+                            </div>
+                        </>
+                    )}
                     <div className="flex gap-3 pt-2">
                         <Button type="button" variant="outline" fullWidth onClick={() => setIsModalOpen(false)} disabled={submitting}>Batal</Button>
                         <Button type="submit" fullWidth loading={submitting}>Simpan</Button>
@@ -214,6 +240,6 @@ export default function DataReferensi() {
             <ConfirmModal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={handleDelete}
                 loading={submitting} message={`Yakin ingin menghapus "${confirmDelete?.nama}"?`} />
             <ToastContainer toasts={toasts} onClose={removeToast} />
-        </div>
+        </div >
     );
 }

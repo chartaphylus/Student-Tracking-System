@@ -8,7 +8,15 @@ import InputAdabIbadah from './pages/InputAdabIbadah';
 import DataAdabIbadah from './pages/DataAdabIbadah';
 import LaporanBulanan from './pages/LaporanBulanan';
 import DataReferensi from './pages/DataReferensi';
+import DataAkunWali from './pages/DataAkunWali';
+import DataLiburan from './pages/DataLiburan';
+import LaporanLiburan from './pages/LaporanLiburan';
+import TugasLiburan from './pages/TugasLiburan';
 import Home from './pages/Home';
+import LoginWali from './pages/LoginWali';
+import DashboardWali from './pages/DashboardWali';
+import LoginMusyrif from './pages/LoginMusyrif';
+import DashboardMusyrif from './pages/DashboardMusyrif';
 import { supabase } from './lib/supabase';
 
 function ProtectedRoute({ children, user }: { children: React.ReactNode; user: any }) {
@@ -47,13 +55,21 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={session ? <Navigate to="/data-santri" replace /> : <Login />} />
+        <Route path="/login-wali" element={<LoginWali />} />
+        <Route path="/login-musyrif" element={<LoginMusyrif />} />
+        <Route path="/dashboard-wali" element={<DashboardWali />} />
+        <Route path="/dashboard-musyrif" element={<DashboardMusyrif />} />
 
         {/* Protected Routes */}
         <Route path="/data-santri" element={<ProtectedRoute user={session}><DataSantri /></ProtectedRoute>} />
+        <Route path="/data-akun-wali" element={<ProtectedRoute user={session}><DataAkunWali /></ProtectedRoute>} />
         <Route path="/data-referensi" element={<ProtectedRoute user={session}><DataReferensi /></ProtectedRoute>} />
         <Route path="/input-adab-ibadah" element={<ProtectedRoute user={session}><InputAdabIbadah /></ProtectedRoute>} />
         <Route path="/data-adab-ibadah" element={<ProtectedRoute user={session}><DataAdabIbadah /></ProtectedRoute>} />
         <Route path="/laporan-bulanan" element={<ProtectedRoute user={session}><LaporanBulanan /></ProtectedRoute>} />
+        <Route path="/data-liburan" element={<ProtectedRoute user={session}><DataLiburan /></ProtectedRoute>} />
+        <Route path="/tugas-liburan" element={<ProtectedRoute user={session}><TugasLiburan /></ProtectedRoute>} />
+        <Route path="/laporan-liburan" element={<ProtectedRoute user={session}><LaporanLiburan /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

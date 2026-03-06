@@ -1,20 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { ToastContainer } from '../components/ui/Toast';
 import { FullPageSpinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useToast } from '../hooks/useToast';
 import { CheckSquare } from 'lucide-react';
+import { PageHeader } from '../components/layout/PageHeader';
 
 const selectCls = `w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm
   focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all`;
 
-export default function InputAdabIbadah() {
+export default function InputAdabIbadah({ musyrifContextId }: { musyrifContextId?: string }) {
     const today = new Date().toISOString().split('T')[0];
     const [tanggal, setTanggal] = useState(today);
-    const [musyrif, setMusyrif] = useState('');
+    const [musyrif, setMusyrif] = useState(musyrifContextId || '');
     const [kamar, setKamar] = useState('');
     const [santriId, setSantriId] = useState('');
     const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
@@ -100,26 +100,27 @@ export default function InputAdabIbadah() {
 
     return (
         <div>
-            <PageHeader title="Input Rekaman Kegiatan" subtitle="Catat kegiatan harian santri." />
+            {!musyrifContextId && <PageHeader title="Input Rekaman Kegiatan" subtitle="Catat kegiatan harian santri." />}
 
             {/* Filters */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                     {
-                        label: 'Tanggal', node: (
-                            <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} className={selectCls} />
-                        )
+                        label: 'Tanggal',
+                        node: <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} className={selectCls} />
                     },
-                    {
-                        label: 'Musyrif', node: (
+                    !musyrifContextId ? {
+                        label: 'Musyrif',
+                        node: (
                             <select value={musyrif} onChange={e => { setMusyrif(e.target.value); setKamar(''); setSantriId(''); }} className={selectCls}>
                                 <option value="">Semua Musyrif</option>
                                 {musyrifList.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
                             </select>
                         )
-                    },
+                    } : null,
                     {
-                        label: 'Kamar', node: (
+                        label: 'Kamar',
+                        node: (
                             <select value={kamar} onChange={e => { setKamar(e.target.value); setSantriId(''); }} className={selectCls}>
                                 <option value="">Semua Kamar</option>
                                 {filteredKamars.map(k => <option key={k.id} value={k.id}>{k.nama_kamar}</option>)}
@@ -127,17 +128,18 @@ export default function InputAdabIbadah() {
                         )
                     },
                     {
-                        label: 'Santri', node: (
+                        label: 'Santri',
+                        node: (
                             <select value={santriId} onChange={e => setSantriId(e.target.value)} className={selectCls}>
                                 <option value="">Pilih santri...</option>
                                 {filteredSantri.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.kelas_list?.nama_kelas || '-'})</option>)}
                             </select>
                         )
                     },
-                ].map(({ label, node }) => (
-                    <div key={label}>
-                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">{label}</label>
-                        {node}
+                ].filter(Boolean).map((item: any) => (
+                    <div key={item.label}>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">{item.label}</label>
+                        {item.node}
                     </div>
                 ))}
             </div>

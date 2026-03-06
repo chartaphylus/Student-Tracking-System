@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 
-export default function Login() {
-    const [email, setEmail] = useState('');
+export default function LoginWali() {
+    const [nim, setNim] = useState('');
     const [password, setPassword] = useState('');
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -16,12 +16,29 @@ export default function Login() {
         e.preventDefault();
         setError('');
         setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            setError('Email atau password salah. Silakan coba lagi.');
-        } else {
-            navigate('/data-santri');
+
+        try {
+            const { data, error } = await supabase
+                .from('akun_wali')
+                .select('santri_id, santri(nama)')
+                .eq('nim_id', nim)
+                .eq('password', password)
+                .single();
+
+            if (error || !data) {
+                setError('NIM atau password salah. Silakan coba lagi.');
+            } else {
+                localStorage.setItem('wali_session', JSON.stringify({
+                    santriId: data.santri_id,
+                    namaSantri: (data.santri as any)?.nama,
+                    nim: nim
+                }));
+                navigate('/dashboard-wali');
+            }
+        } catch (err) {
+            setError('Terjadi kesalahan koneksi.');
         }
+
         setLoading(false);
     };
 
@@ -34,24 +51,24 @@ export default function Login() {
                         <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-2xl font-bold text-primary">Selamat Datang</h1>
-                        <p className="text-slate-400 text-sm mt-0.5">Login ke Sistem Adab & Ibadah</p>
+                        <h1 className="text-2xl font-bold text-primary">Portal Wali Santri</h1>
+                        <p className="text-slate-400 text-sm mt-0.5">Login untuk melihat pencapaian santri</p>
                     </div>
                 </div>
 
                 {/* Card */}
-                <div className="bg-white rounded-2xl shadow-card p-6 border border-slate-100">
+                <div className="bg-white rounded-2xl shadow-card p-6 border border-slate-100 mb-6">
                     <form onSubmit={handleLogin} className="space-y-4">
-                        {/* Email */}
+                        {/* NIM */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">NIM / NIS</label>
                             <input
-                                type="email"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
+                                type="text"
+                                value={nim}
+                                onChange={e => setNim(e.target.value)}
                                 required
                                 autoFocus
-                                placeholder="admin@pesantren.id"
+                                placeholder="Masukkan NIM atau NIS"
                                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-300
                   focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:bg-white transition-all"
                             />
@@ -91,6 +108,12 @@ export default function Login() {
                             {loading ? 'Masuk...' : 'Login'}
                         </Button>
                     </form>
+                </div>
+
+                <div className="text-center">
+                    <Link to="/" className="text-sm text-slate-500 hover:text-primary transition-colors">
+                        &larr; Kembali ke Beranda
+                    </Link>
                 </div>
             </div>
         </div>

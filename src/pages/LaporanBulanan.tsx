@@ -24,7 +24,7 @@ const getColor = (v: number) => v > 90 ? '#1a4267' : v > 75 ? '#3b82f6' : v > 60
 const selectCls = `w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm
   focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all`;
 
-export default function LaporanBulanan() {
+export default function LaporanBulanan({ musyrifId }: { musyrifId?: string }) {
     const today = new Date();
     const [monthYear, setMonthYear] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
     const [musyrif, setMusyrif] = useState('');
@@ -43,10 +43,24 @@ export default function LaporanBulanan() {
     useEffect(() => { checkAndFetchData(); }, [santriId, monthYear]);
 
     const fetchSantri = async () => {
+        let sQuery = supabase.from('santri').select('id, nama, kelas_id, kamar_id, kelas_list(nama_kelas), kamars(id, nama_kamar, musyrif_id, musyrifs(nama))');
+        let mQuery = supabase.from('musyrifs').select('*');
+        let kQuery = supabase.from('kamars').select('*');
+
+        if (musyrifId) {
+            const { data: rooms } = await supabase.from('kamars').select('id').eq('musyrif_id', musyrifId);
+            const roomIds = (rooms || []).map(r => r.id);
+            sQuery = sQuery.in('kamar_id', roomIds);
+            mQuery = mQuery.eq('id', musyrifId);
+            kQuery = kQuery.eq('musyrif_id', musyrifId);
+            // Pre-set musyrif filter
+            setMusyrif(musyrifId);
+        }
+
         const [sRes, mRes, kRes] = await Promise.all([
-            supabase.from('santri').select('id, nama, kelas_id, kamar_id, kelas_list(nama_kelas), kamars(id, nama_kamar, musyrif_id, musyrifs(nama))').order('nama'),
-            supabase.from('musyrifs').select('*').order('nama'),
-            supabase.from('kamars').select('*').order('nama_kamar'),
+            sQuery.order('nama'),
+            mQuery.order('nama'),
+            kQuery.order('nama_kamar'),
         ]);
         if (sRes.data?.length) { setSantriList(sRes.data); }
         if (mRes.data) setMusyrifList(mRes.data);
@@ -190,49 +204,46 @@ export default function LaporanBulanan() {
 
     return (
         <div>
-            <PageHeader title="Laporan Bulanan Kegiatan" subtitle="Ringkasan capaian adab & ibadah santri per bulan." />
+            {!musyrifId && (
+                <PageHeader title="Laporan Bulanan Kegiatan" subtitle="Ringkasan capaian adab & ibadah santri per bulan." />
+            )}
 
             {/* Filters */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
-                {[
-                    { label: 'Bulan & Tahun', node: <input type="month" value={monthYear} onChange={e => setMonthYear(e.target.value)} className={selectCls} /> },
-                    {
-                        label: 'Musyrif', node: (
-                            <select value={musyrif} onChange={e => { setMusyrif(e.target.value); setKamar(''); }} className={selectCls}>
-                                <option value="">Semua Musyrif</option>
-                                {musyrifList.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
-                            </select>
-                        )
-                    },
-                    {
-                        label: 'Kamar', node: (
-                            <select value={kamar} onChange={e => setKamar(e.target.value)} className={selectCls}>
-                                <option value="">Semua Kamar</option>
-                                {filteredKamars.map(k => <option key={k.id} value={k.id}>{k.nama_kamar}</option>)}
-                            </select>
-                        )
-                    },
-                    {
-                        label: 'Santri', node: (
-                            <select value={santriId} onChange={e => setSantriId(e.target.value)} className={selectCls}>
-                                <option value="">Pilih santri...</option>
-                                {filteredSantri.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.kelas_list?.nama_kelas || '-'})</option>)}
-                            </select>
-                        )
-                    },
-                    {
-                        label: ' ', node: (
-                            <div className="flex gap-2">
-                                <Button icon={<FileText size={15} />} onClick={generatePDF} loading={downloading} size="md" fullWidth>Download PDF</Button>
-                            </div>
-                        )
-                    },
-                ].map(({ label, node }) => (
-                    <div key={label}>
-                        {label.trim() && <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">{label}</label>}
-                        {node}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-6 flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Bulan & Tahun</label>
+                    <input type="month" value={monthYear} onChange={e => setMonthYear(e.target.value)} className={selectCls} />
+                </div>
+
+                {!musyrifId && (
+                    <div className="flex-1 min-w-[200px]">
+                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Musyrif</label>
+                        <select value={musyrif} onChange={e => { setMusyrif(e.target.value); setKamar(''); }} className={selectCls}>
+                            <option value="">Semua Musyrif</option>
+                            {musyrifList.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
+                        </select>
                     </div>
-                ))}
+                )}
+
+                <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Kamar</label>
+                    <select value={kamar} onChange={e => setKamar(e.target.value)} className={selectCls}>
+                        <option value="">Semua Kamar</option>
+                        {filteredKamars.map(k => <option key={k.id} value={k.id}>{k.nama_kamar}</option>)}
+                    </select>
+                </div>
+
+                <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Santri</label>
+                    <select value={santriId} onChange={e => setSantriId(e.target.value)} className={selectCls}>
+                        <option value="">Pilih santri...</option>
+                        {filteredSantri.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.kelas_list?.nama_kelas || '-'})</option>)}
+                    </select>
+                </div>
+
+                <div className="flex-1 min-w-[150px]">
+                    <Button icon={<FileText size={15} />} onClick={generatePDF} loading={downloading} fullWidth>PDF</Button>
+                </div>
             </div>
 
             {/* Content */}

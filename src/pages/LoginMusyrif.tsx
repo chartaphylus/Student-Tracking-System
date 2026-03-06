@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 
-export default function Login() {
-    const [email, setEmail] = useState('');
+export default function LoginMusyrif() {
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -16,17 +16,34 @@ export default function Login() {
         e.preventDefault();
         setError('');
         setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            setError('Email atau password salah. Silakan coba lagi.');
-        } else {
-            navigate('/data-santri');
+
+        try {
+            const { data, error } = await supabase
+                .from('musyrifs')
+                .select('*')
+                .eq('username', username)
+                .eq('password', password)
+                .single();
+
+            if (error || !data) {
+                setError('Username atau password salah.');
+            } else {
+                localStorage.setItem('musyrif_session', JSON.stringify({
+                    id: data.id,
+                    nama: data.nama,
+                    username: data.username
+                }));
+                navigate('/dashboard-musyrif');
+            }
+        } catch (err) {
+            setError('Terjadi kesalahan koneksi.');
         }
+
         setLoading(false);
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-slate-100 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-slate-100 flex items-center justify-center p-4">
             <div className="w-full max-w-sm animate-slide-up">
                 {/* Logo */}
                 <div className="flex flex-col items-center mb-8 gap-3">
@@ -34,30 +51,28 @@ export default function Login() {
                         <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-2xl font-bold text-primary">Selamat Datang</h1>
-                        <p className="text-slate-400 text-sm mt-0.5">Login ke Sistem Adab & Ibadah</p>
+                        <h1 className="text-2xl font-bold text-indigo-900">Portal Musyrif</h1>
+                        <p className="text-slate-400 text-sm mt-0.5">Pendampingan & Monitoring Kamar</p>
                     </div>
                 </div>
 
                 {/* Card */}
-                <div className="bg-white rounded-2xl shadow-card p-6 border border-slate-100">
+                <div className="bg-white rounded-2xl shadow-card p-6 border border-slate-100 mb-6">
                     <form onSubmit={handleLogin} className="space-y-4">
-                        {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
                             <input
-                                type="email"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
+                                type="text"
+                                value={username}
+                                onChange={e => setUsername(e.target.value)}
                                 required
                                 autoFocus
-                                placeholder="admin@pesantren.id"
+                                placeholder="Masukkan username"
                                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-300
-                  focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:bg-white transition-all"
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 focus:bg-white transition-all"
                             />
                         </div>
 
-                        {/* Password */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
                             <div className="relative">
@@ -68,7 +83,7 @@ export default function Login() {
                                     required
                                     placeholder="••••••••"
                                     className="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-300
-                    focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:bg-white transition-all"
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 focus:bg-white transition-all"
                                 />
                                 <button
                                     type="button"
@@ -87,10 +102,16 @@ export default function Login() {
                             </p>
                         )}
 
-                        <Button type="submit" fullWidth loading={loading} size="lg" icon={<LogIn size={18} />}>
-                            {loading ? 'Masuk...' : 'Login'}
+                        <Button type="submit" fullWidth loading={loading} size="lg" className="bg-indigo-600 hover:bg-indigo-700" icon={<LogIn size={18} />}>
+                            {loading ? 'Masuk...' : 'Login Musyrif'}
                         </Button>
                     </form>
+                </div>
+
+                <div className="text-center">
+                    <Link to="/" className="text-sm text-slate-500 hover:text-indigo-600 transition-colors">
+                        &larr; Kembali ke Beranda
+                    </Link>
                 </div>
             </div>
         </div>
