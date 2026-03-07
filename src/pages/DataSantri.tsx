@@ -139,7 +139,7 @@ export default function DataSantri({ musyrifId }: { musyrifId?: string }) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input
                             type="text"
-                            placeholder="Cari nama atau NIM..."
+                            placeholder="Cari nama atau NIS..."
                             value={search}
                             onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                             className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
@@ -198,7 +198,7 @@ export default function DataSantri({ musyrifId }: { musyrifId?: string }) {
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-slate-400 mt-0.5">NIM: {s.nim || '-'}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">NIS: {s.nim || '-'}</p>
                                         </Td>
                                         <Td>
                                             <span className="px-2 py-0.5 bg-primary-light text-primary text-xs font-medium rounded-lg">
@@ -262,8 +262,8 @@ export default function DataSantri({ musyrifId }: { musyrifId?: string }) {
                             value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">NIM (Nomor Induk Murid)</label>
-                        <input type="text" className={inputCls} placeholder="Masukkan NIM..."
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">NIS (Nomor Induk Santri)</label>
+                        <input type="text" className={inputCls} placeholder="Masukkan NIS..."
                             value={formData.nim} onChange={e => setFormData({ ...formData, nim: e.target.value })} />
                     </div>
                     <div>

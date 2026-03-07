@@ -98,7 +98,7 @@ export default function DashboardMusyrif() {
     ];
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
                 <div
@@ -180,7 +180,7 @@ export default function DashboardMusyrif() {
             </div>
 
             {/* Main Content */}
-            <main className="flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 pb-8 transition-all duration-500">
+            <main className="flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 pb-8 transition-all duration-500 min-w-0">
                 <div className="max-w-7xl mx-auto">
                     <PageHeader
                         title={

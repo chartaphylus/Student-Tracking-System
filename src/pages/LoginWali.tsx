@@ -26,7 +26,7 @@ export default function LoginWali() {
                 .single();
 
             if (error || !data) {
-                setError('NIM atau password salah. Silakan coba lagi.');
+                setError('NIS atau password salah. Silakan coba lagi.');
             } else {
                 localStorage.setItem('wali_session', JSON.stringify({
                     santriId: data.santri_id,
@@ -61,14 +61,14 @@ export default function LoginWali() {
                     <form onSubmit={handleLogin} className="space-y-4">
                         {/* NIM */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">NIM / NIS</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">NIS</label>
                             <input
                                 type="text"
                                 value={nim}
                                 onChange={e => setNim(e.target.value)}
                                 required
                                 autoFocus
-                                placeholder="Masukkan NIM atau NIS"
+                                placeholder="Masukkan NIS"
                                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-300
                   focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:bg-white transition-all"
                             />

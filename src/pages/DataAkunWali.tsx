@@ -103,12 +103,12 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
         e.preventDefault();
         setSubmitting(true);
 
-        // Ambil NIM dari data santri untuk disinkronkan ke nim_id
+        // Ambil NIS dari data santri untuk disinkronkan ke nim_id
         const selectedSantri = santriList.find(s => s.id === formData.santri_id);
         const finalNimId = selectedSantri?.nim || formData.nim_id;
 
         if (!finalNimId) {
-            showToast('NIM santri belum diisi. Harap isi NIM di Data Santri terlebih dahulu.', 'error');
+            showToast('NIS santri belum diisi. Harap isi NIS di Data Santri terlebih dahulu.', 'error');
             setSubmitting(false);
             return;
         }
@@ -149,7 +149,7 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
             <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5">
                 <input
                     type="text"
-                    placeholder="Cari NIM atau nama santri..."
+                    placeholder="Cari NIS atau nama santri..."
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     className={inputCls}
@@ -166,7 +166,7 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
                             <thead>
                                 <tr>
                                     <Th className="w-12">No</Th>
-                                    <Th>NIM / NIS</Th>
+                                    <Th>NIS</Th>
                                     <Th>Password</Th>
                                     <Th>Data Santri</Th>
                                     <Th className="text-right">Aksi</Th>
@@ -238,12 +238,12 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">NIM / NIS (ID Login)</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">NIS (ID Login)</label>
                         <div className="flex items-center gap-2">
                             <input type="text" readOnly className={`${inputCls} bg-slate-100 cursor-not-allowed`}
                                 value={santriList.find(s => s.id === formData.santri_id)?.nim || 'Pilih santri...'} />
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">* Otomatis mengambil NIM dari Data Santri</p>
+                        <p className="text-[10px] text-slate-400 mt-1">* Otomatis mengambil NIS dari Data Santri</p>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
@@ -264,7 +264,7 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
                 onClose={() => setConfirmDelete(null)}
                 onConfirm={handleDelete}
                 loading={submitting}
-                message={`Yakin ingin menghapus akun dengan NIM "${confirmDelete?.nim_id}"?`}
+                message={`Yakin ingin menghapus akun dengan NIS "${confirmDelete?.nim_id}"?`}
             />
 
             <ToastContainer toasts={toasts} onClose={removeToast} />
