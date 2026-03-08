@@ -20,6 +20,7 @@ import DashboardWali from './pages/DashboardWali';
 import LoginMusyrif from './pages/LoginMusyrif';
 import DashboardMusyrif from './pages/DashboardMusyrif';
 import { supabase } from './lib/supabase';
+import InstallPWA from './components/pwa/InstallPWA';
 
 function ProtectedRoute({ children, user }: { children: React.ReactNode; user: any }) {
   if (!user) return <Navigate to="/login" replace />;
@@ -54,6 +55,7 @@ export default function App() {
 
   return (
     <Router>
+      <InstallPWA />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={session ? <Navigate to="/data-santri" replace /> : <Login />} />
