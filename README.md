@@ -29,6 +29,7 @@
 - **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL + Auth)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Charts**: [Recharts](https://recharts.org/)
+- **PWA**: [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) (Installable on Mobile)
 - **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF) + [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable)
 
 ## 📦 Instalasi & Menjalankan Lokal
