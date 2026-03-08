@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, User, Calendar, MapPin, GraduationCap, LogOut, Loader2, BarChart3, MoonStar, Lock } from 'lucide-react';
+import { FileText, User, Calendar, MapPin, GraduationCap, LogOut, Loader2, BarChart3, MoonStar, Smartphone, Stethoscope } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
@@ -12,8 +12,10 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { DataTable, Th, Td, Tr } from '../components/shared/DataTable';
 import { ProgressBar } from '../components/shared/ProgressBar';
 import { useToast } from '../hooks/useToast';
-import { PengaturanAkun } from '../components/wali/PengaturanAkun';
 import { FormLiburan } from '../components/wali/FormLiburan';
+import { ProfilWali } from '../components/wali/ProfilWali';
+import { DataPenitipanHpWali } from '../components/wali/DataPenitipanHpWali';
+import { RekamMedisWali } from '../components/wali/RekamMedisWali';
 
 const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const barColors = ['#2dbdb6', '#69d2a1', '#7b61ff', '#ff6b6b', '#ffa94d', '#74c0fc', '#f06595', '#ffd43b'];
@@ -30,7 +32,8 @@ export default function DashboardWali() {
     const [categoryReports, setCategoryReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [downloading, setDownloading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'asrama' | 'liburan' | 'pengaturan'>('asrama');
+    const [activeTab, setActiveTab] = useState<'asrama' | 'liburan' | 'hp' | 'kesehatan' | 'profile'>('asrama');
+    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const navigate = useNavigate();
 
     const { toasts, showToast, removeToast } = useToast();
@@ -193,7 +196,9 @@ export default function DashboardWali() {
     const navItems = [
         { id: 'asrama', icon: BarChart3, label: 'Laporan Asrama' },
         { id: 'liburan', icon: MoonStar, label: 'Kegiatan Liburan' },
-        { id: 'pengaturan', icon: Lock, label: 'Pengaturan Akun' },
+        { id: 'hp', icon: Smartphone, label: 'Penitipan HP' },
+        { id: 'kesehatan', icon: Stethoscope, label: 'Rekam Medis' },
+        { id: 'profile', icon: User, label: 'Profil Wali' },
     ];
 
     return (
@@ -263,15 +268,39 @@ export default function DashboardWali() {
                     </div>
                     <span className="text-white font-bold text-sm">Dashboard Wali</span>
                 </div>
-                <button onClick={handleLogout} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 text-white transition-colors">
-                    <LogOut size={15} />
-                </button>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                        className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 text-white transition-colors"
+                    >
+                        <User size={15} />
+                    </button>
+                    {showProfileDropdown && (
+                        <>
+                            <div className="fixed inset-0 z-30" onClick={() => setShowProfileDropdown(false)} />
+                            <div className="absolute right-0 top-10 mt-1 w-48 bg-white rounded-2xl shadow-xl z-50 border border-slate-100 overflow-hidden animate-slide-up origin-top-right">
+                                <button
+                                    onClick={() => { setActiveTab('profile'); setShowProfileDropdown(false); }}
+                                    className="w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                >
+                                    <User size={16} className="text-slate-400" /> Profil Wali
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100"
+                                >
+                                    <LogOut size={16} className="text-red-400" /> Keluar Sistem
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Mobile Bottom Navigation */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/97 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] text-slate-400 pb-safe">
                 <div className="flex justify-around items-center h-[62px] px-2">
-                    {navItems.map(({ id, icon: Icon, label }) => (
+                    {navItems.filter(nav => nav.id !== 'profile').map(({ id, icon: Icon, label }) => (
                         <button
                             key={id}
                             onClick={() => setActiveTab(id as any)}
@@ -433,9 +462,19 @@ export default function DashboardWali() {
                         <FormLiburan santriId={selectedSantri.id} />
                     )}
 
-                    {/* Tab: Pengaturan Akun */}
-                    {selectedSantri && activeTab === 'pengaturan' && (
-                        <PengaturanAkun nim={JSON.parse(localStorage.getItem('wali_session') || '{}').nim || ''} />
+                    {/* Tab: Penitipan HP */}
+                    {selectedSantri && activeTab === 'hp' && (
+                        <DataPenitipanHpWali santriId={selectedSantri.id} />
+                    )}
+
+                    {/* Tab: Rekam Medis */}
+                    {selectedSantri && activeTab === 'kesehatan' && (
+                        <RekamMedisWali santriId={selectedSantri.id} />
+                    )}
+
+                    {/* Tab: Profil Wali */}
+                    {selectedSantri && activeTab === 'profile' && (
+                        <ProfilWali nim={JSON.parse(localStorage.getItem('wali_session') || '{}').nim || ''} santri={selectedSantri} />
                     )}
                 </div>
             </main>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { Pin, CheckCircle2, Circle, FileText, Download } from 'lucide-react';
+import { CheckCircle2, Circle, FileText, Download } from 'lucide-react';
 import { ToastContainer } from '../components/ui/Toast';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useToast } from '../hooks/useToast';
@@ -25,12 +25,17 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
     const [kamarList, setKamarList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [viewMode, setViewMode] = useState<'harian' | 'rekapan'>('harian');
+    const [viewMode, setViewMode] = useState<'harian' | 'rekapan' | 'excel'>('harian');
     const [startDate, setStartDate] = useState(todayStr);
     const [endDate, setEndDate] = useState(todayStr);
 
     const [rekapanData, setRekapanData] = useState<any[]>([]);
     const [specialTasksRekapan, setSpecialTasksRekapan] = useState<any[]>([]);
+    const [allSantriRekapan, setAllSantriRekapan] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [items, setItems] = useState<any[]>([]);
+    const [allRecords, setAllRecords] = useState<any[]>([]);
+
     const [loadingRekapan, setLoadingRekapan] = useState(false);
     const [downloading, setDownloading] = useState(false);
 
@@ -73,59 +78,95 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
     const filteredKamars = useMemo(() => kamarList.filter(k => !musyrif || k.musyrif_id === musyrif), [kamarList, musyrif]);
 
     const handleFetchRekapan = async () => {
-        if (!activeSantri) return;
         setLoadingRekapan(true);
         try {
-            const [catRes, itemRes, recRes, specialRes] = await Promise.all([
+            let recQuery = supabase.from('record_liburan').select('*')
+                .gte('tanggal', startDate)
+                .lte('tanggal', endDate);
+
+            if (santriId) {
+                recQuery = recQuery.eq('santri_id', santriId);
+            } else if (musyrif || kamar || musyrifId) {
+                const santriIds = filteredSantri.map(s => s.id);
+                if (santriIds.length > 0) {
+                    recQuery = recQuery.in('santri_id', santriIds);
+                } else {
+                    setCategories([]); setItems([]); setAllRecords([]); setRekapanData([]); setAllSantriRekapan([]);
+                    setLoadingRekapan(false);
+                    return;
+                }
+            }
+
+            const [cRes, iRes, rRes] = await Promise.all([
                 supabase.from('kategori_liburan').select('*').order('created_at'),
                 supabase.from('item_liburan').select('*').order('created_at'),
-                supabase.from('record_liburan').select('*')
-                    .eq('santri_id', santriId)
-                    .gte('tanggal', startDate)
-                    .lte('tanggal', endDate),
-                supabase.from('tugas_liburan_santri').select('*')
-                    .eq('santri_id', santriId)
+                recQuery
             ]);
 
-            const cats = catRes.data || [];
-            const items = itemRes.data || [];
-            const recs = recRes.data || [];
+            const cats = cRes.data || [];
+            const itemList = iRes.data || [];
+            const recs = rRes.data || [];
 
-            const s = new Date(startDate);
-            const e = new Date(endDate);
-            const totalDays = Math.max(1, Math.floor((e.getTime() - s.getTime()) / (1000 * 3600 * 24)) + 1);
+            setCategories(cats);
+            setItems(itemList);
+            setAllRecords(recs);
 
-            const result = cats.map(c => {
-                const cItems = items.filter(i => i.kategori_id === c.id);
-                const itemsReport = cItems.map(item => {
-                    const itemRecs = recs.filter(r => r.item_id === item.id);
-                    let doneCount = 0;
-                    itemRecs.forEach(r => {
-                        if (item.tipe_input === 'checkbox') {
-                            if (r.is_done) doneCount++;
-                        } else {
-                            if (r.keterangan && r.keterangan.trim().length > 0) doneCount++;
-                        }
+            if (santriId) {
+                const sDt = new Date(startDate);
+                const eDt = new Date(endDate);
+                const totalDays = Math.max(1, Math.floor((eDt.getTime() - sDt.getTime()) / (1000 * 3600 * 24)) + 1);
+
+                const result = cats.map(c => {
+                    const cItems = itemList.filter(i => i.kategori_id === c.id);
+                    const itemsReport = cItems.map(item => {
+                        const itemRecs = recs.filter(r => r.item_id === item.id && r.santri_id === santriId);
+                        let doneCount = 0;
+                        itemRecs.forEach(r => {
+                            if (item.tipe_input === 'checkbox') {
+                                if (r.is_done) doneCount++;
+                            } else {
+                                if (r.keterangan && r.keterangan.trim().length > 0) doneCount++;
+                            }
+                        });
+
+                        return {
+                            id: item.id,
+                            nama: item.nama_item,
+                            tipe: item.tipe_input,
+                            doneCount,
+                            capaian: totalDays > 0 ? (doneCount / totalDays) * 100 : 0
+                        };
                     });
 
                     return {
-                        id: item.id,
-                        nama: item.nama_item,
-                        tipe: item.tipe_input,
-                        doneCount,
-                        capaian: totalDays > 0 ? (doneCount / totalDays) * 100 : 0
+                        id: c.id,
+                        nama: c.nama_kategori,
+                        items: itemsReport
                     };
+                }).filter(c => c.items.length > 0);
+
+                setRekapanData(result);
+                const mySpecialRes = await supabase.from('tugas_liburan_santri').select('*').eq('santri_id', santriId);
+                setSpecialTasksRekapan(mySpecialRes.data || []);
+            } else {
+                // Global recap (all santri in current filter)
+                const globalData = filteredSantri.map(s => {
+                    const sRecs = recs.filter(r => r.santri_id === s.id);
+                    const summary: any = { id: s.id, nama: s.nama, counts: {} };
+                    itemList.forEach(it => {
+                        const itRecs = sRecs.filter(r => r.item_id === it.id);
+                        let count = 0;
+                        itRecs.forEach(r => {
+                            if (it.tipe_input === 'checkbox' && r.is_done) count++;
+                            else if (it.tipe_input === 'text' && r.keterangan?.trim()) count++;
+                        });
+                        summary.counts[it.id] = count;
+                    });
+                    return summary;
                 });
+                setAllSantriRekapan(globalData);
+            }
 
-                return {
-                    id: c.id,
-                    nama: c.nama_kategori,
-                    items: itemsReport
-                };
-            }).filter(c => c.items.length > 0);
-
-            setRekapanData(result);
-            setSpecialTasksRekapan(specialRes.data || []);
         } catch (error) {
             console.error(error);
             showToast('Gagal memproses data rekapan', 'error');
@@ -135,10 +176,10 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
     };
 
     useEffect(() => {
-        if (viewMode === 'rekapan' && activeSantri) {
+        if ((viewMode === 'rekapan' || viewMode === 'excel')) {
             handleFetchRekapan();
         }
-    }, [viewMode, activeSantri, startDate, endDate]);
+    }, [viewMode, santriId, startDate, endDate, musyrif, kamar]);
 
     const generatePDF = () => {
         if (!activeSantri || rekapanData.length === 0) {
@@ -244,112 +285,222 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
 
             {loading ? (
                 <div className="py-12 flex justify-center"><FullPageSpinner label="Memuat data referensi..." /></div>
-            ) : !activeSantri ? (
-                <EmptyState message="Pilih santri untuk melihat laporan kegiatan liburannya." />
             ) : (
                 <div className="space-y-6 animate-fade-in">
                     <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-2">
                         <button
                             onClick={() => setViewMode('harian')}
-                            className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${viewMode === 'harian' ? 'bg-primary text-white shadow' : 'bg-transparent text-slate-500 hover:bg-slate-50'}`}
+                            disabled={!santriId}
+                            className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all disabled:opacity-50 ${viewMode === 'harian' ? 'bg-primary text-white shadow' : 'bg-transparent text-slate-500 hover:bg-slate-50'}`}
                         >
                             <FileText size={16} className="inline mr-2 -mt-0.5" /> Laporan Harian
                         </button>
                         <button
                             onClick={() => setViewMode('rekapan')}
-                            className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${viewMode === 'rekapan' ? 'bg-primary text-white shadow' : 'bg-transparent text-slate-500 hover:bg-slate-50'}`}
+                            disabled={!santriId}
+                            className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all disabled:opacity-50 ${viewMode === 'rekapan' ? 'bg-primary text-white shadow' : 'bg-transparent text-slate-500 hover:bg-slate-50'}`}
                         >
-                            <FileText size={16} className="inline mr-2 -mt-0.5" /> Rekapan & Persentase
+                            <FileText size={16} className="inline mr-2 -mt-0.5" /> Ringkasan Progres
+                        </button>
+                        <button
+                            onClick={() => setViewMode('excel')}
+                            className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${viewMode === 'excel' ? 'bg-primary text-white shadow' : 'bg-transparent text-slate-500 hover:bg-slate-50'}`}
+                        >
+                            <Download size={16} className="inline mr-2 -mt-0.5" /> Tabel Excel (Rekapan)
                         </button>
                     </div>
 
                     {viewMode === 'harian' && (
-                        <FormLiburan santriId={activeSantri.id} readOnly={true} />
+                        activeSantri ? <FormLiburan santriId={activeSantri.id} readOnly={true} /> : <EmptyState message="Pilih santri untuk melihat laporan harian." />
                     )}
 
                     {viewMode === 'rekapan' && (
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 md:p-7">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                                <div>
-                                    <h3 className="text-xl md:text-2xl font-bold text-slate-800">Rekapan Kegiatan Liburan</h3>
-                                    <p className="text-sm text-slate-500 mt-1">
-                                        Pilih tentang tanggal liburan untuk melihat akumulasi pengisian rutinitas.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row items-center gap-3">
-                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        activeSantri ? (
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 md:p-7">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                    <div>
+                                        <h3 className="text-xl md:text-2xl font-bold text-slate-800">Ringkasan Progres: {activeSantri.nama}</h3>
+                                        <p className="text-sm text-slate-500 mt-1">Capaian rutinitas selama masa liburan.</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={selectCls} />
                                         <span className="text-slate-400 font-medium">s/d</span>
                                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={selectCls} />
+                                        <Button icon={<Download size={14} />} onClick={generatePDF} loading={downloading}>PDF</Button>
                                     </div>
-                                    <Button icon={<Download size={14} />} onClick={generatePDF} loading={downloading} className="w-full sm:w-auto">
-                                        Download PDF
-                                    </Button>
+                                </div>
+
+                                {loadingRekapan ? (
+                                    <div className="py-12 flex justify-center"><FullPageSpinner label="Menghitung rekapitulasi..." /></div>
+                                ) : rekapanData.length === 0 ? (
+                                    <EmptyState message="Tidak ada data item liburan." />
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-xl text-sm mb-4">
+                                            Total jangka waktu: <b>{Math.max(1, Math.floor((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 3600 * 24)) + 1)} Hari</b>.
+                                        </div>
+
+                                        {specialTasksRekapan.length > 0 && (
+                                            <div className="bg-amber-50/50 border border-amber-200 rounded-2xl overflow-hidden mb-6">
+                                                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    {specialTasksRekapan.map(task => (
+                                                        <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${task.is_done ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-amber-100'}`}>
+                                                            <div className={task.is_done ? 'text-emerald-500' : 'text-slate-300'}>
+                                                                {task.is_done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`text-xs font-bold truncate ${task.is_done ? 'text-slate-400' : 'text-slate-800'}`}>{task.judul}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            {rekapanData.map(cat => (
+                                                <div key={cat.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+                                                        <h4 className="font-bold text-slate-700 text-sm">{cat.nama}</h4>
+                                                    </div>
+                                                    <DataTable>
+                                                        <thead><tr><Th>Kegiatan</Th><Th className="w-24 text-center">Tuntas</Th><Th className="w-24">Capaian</Th></tr></thead>
+                                                        <tbody>
+                                                            {cat.items.map((it: any) => (
+                                                                <Tr key={it.id}>
+                                                                    <Td className="text-slate-700 text-xs font-medium">{it.nama}</Td>
+                                                                    <Td className="text-center text-xs font-semibold">{it.doneCount} hari</Td>
+                                                                    <Td><ProgressBar value={it.capaian} height="h-2" /></Td>
+                                                                </Tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </DataTable>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : <EmptyState message="Pilih santri untuk melihat ringkasan progres." />
+                    )}
+
+                    {viewMode === 'excel' && (
+                        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 md:p-7 overflow-hidden">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                <div>
+                                    <h3 className="text-xl md:text-2xl font-bold text-slate-800">
+                                        {activeSantri ? `Riwayat Harian: ${activeSantri.nama}` : 'Rekapan Semua Santri'}
+                                    </h3>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        {activeSantri ? 'Tabel rincian pengisian setiap hari. Blok dan copy tabel di bawah untuk dipindah ke Excel.' : 'Tabel akumulasi capaian seluruh santri. Silakan copy untuk rekapitulasi Excel.'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={selectCls} />
+                                    <span className="text-slate-400 font-medium">s/d</span>
+                                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={selectCls} />
                                 </div>
                             </div>
 
                             {loadingRekapan ? (
-                                <div className="py-12 flex justify-center"><FullPageSpinner label="Menghitung rekapitulasi..." /></div>
-                            ) : rekapanData.length === 0 ? (
-                                <EmptyState message="Tidak ada data item liburan." />
+                                <div className="py-20 flex justify-center"><FullPageSpinner label="Membangun tabel..." /></div>
                             ) : (
-                                <div className="space-y-6">
-                                    <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-xl text-sm mb-4">
-                                        Total jangka waktu: <b>{Math.max(1, Math.floor((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 3600 * 24)) + 1)} Hari</b>. Capaian diukur dari berapa hari aktivitas tersebut dilaporkan (dicentang / diisi uraiannya).
-                                    </div>
-
-                                    {specialTasksRekapan.length > 0 && (
-                                        <div className="bg-amber-50/50 border border-amber-200 rounded-2xl overflow-hidden mb-6">
-                                            <div className="px-5 py-3 border-b border-amber-200 flex items-center gap-2">
-                                                <Pin size={16} className="text-amber-500 rotate-45" />
-                                                <h4 className="font-bold text-amber-900 text-sm">Status Tugas Khusus</h4>
-                                            </div>
-                                            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {specialTasksRekapan.map(task => (
-                                                    <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${task.is_done ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-amber-100'}`}>
-                                                        <div className={task.is_done ? 'text-emerald-500' : 'text-slate-300'}>
-                                                            {task.is_done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className={`text-xs font-bold truncate ${task.is_done ? 'text-slate-400' : 'text-slate-800'}`}>{task.judul}</p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        {rekapanData.map(cat => (
-                                            <div key={cat.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
-                                                    <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                                                        {cat.nama}
-                                                    </h4>
-                                                </div>
-                                                <DataTable>
-                                                    <thead><tr>
-                                                        <Th>Kegiatan</Th>
-                                                        <Th className="w-24 text-center">Tuntas</Th>
-                                                        <Th className="w-24">Capaian</Th>
-                                                    </tr></thead>
-                                                    <tbody>
-                                                        {cat.items.map((it: any) => (
-                                                            <Tr key={it.id}>
-                                                                <Td className="text-slate-700 text-xs font-medium leading-snug">{it.nama}</Td>
-                                                                <Td className="text-center text-xs text-slate-500 font-semibold">{it.doneCount} hari</Td>
-                                                                <Td><ProgressBar value={it.capaian} height="h-2" /></Td>
-                                                            </Tr>
-                                                        ))}
-                                                    </tbody>
-                                                </DataTable>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                                    <table className="w-full text-xs text-left border-collapse min-w-[800px]">
+                                        <thead>
+                                            <tr className="bg-slate-100 border-b border-slate-300">
+                                                <th className="p-3 border-r border-slate-300 font-bold" rowSpan={2}>
+                                                    {activeSantri ? 'No' : 'No'}
+                                                </th>
+                                                <th className="p-3 border-r border-slate-300 font-bold" rowSpan={2}>
+                                                    {activeSantri ? 'Hari/Tanggal' : 'Nama Santri'}
+                                                </th>
+                                                {categories.map(cat => {
+                                                    const catItems = items.filter(i => i.kategori_id === cat.id);
+                                                    if (catItems.length === 0) return null;
+                                                    return (
+                                                        <th key={cat.id} className="p-2 border-r border-slate-300 text-center font-bold bg-slate-50" colSpan={catItems.length}>
+                                                            {cat.nama_kategori}
+                                                        </th>
+                                                    );
+                                                })}
+                                            </tr>
+                                            <tr className="bg-slate-50 border-b border-slate-300">
+                                                {categories.map(cat => {
+                                                    const catItems = items.filter(i => i.kategori_id === cat.id);
+                                                    return catItems.map(it => (
+                                                        <th key={it.id} className="p-2 border-r border-slate-300 font-semibold text-[10px] w-24 text-center">
+                                                            {it.nama_item}
+                                                        </th>
+                                                    ));
+                                                })}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {activeSantri ? (
+                                                // Daily History for ONE santri
+                                                (() => {
+                                                    const days = [];
+                                                    let curr = new Date(startDate);
+                                                    const end = new Date(endDate);
+                                                    while (curr <= end) {
+                                                        days.push(curr.toISOString().split('T')[0]);
+                                                        curr.setDate(curr.getDate() + 1);
+                                                    }
+                                                    return days.map((dateStr, idx) => {
+                                                        const dateObj = new Date(dateStr);
+                                                        const hari = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+                                                        return (
+                                                            <tr key={dateStr} className="border-b border-slate-200 hover:bg-slate-50/50">
+                                                                <td className="p-2 border-r border-slate-200 text-center">{idx + 1}</td>
+                                                                <td className="p-2 border-r border-slate-200 font-medium whitespace-nowrap">{hari}</td>
+                                                                {categories.map(cat => {
+                                                                    const catItems = items.filter(i => i.kategori_id === cat.id);
+                                                                    return catItems.map(it => {
+                                                                        const rec = allRecords.find(r => r.item_id === it.id && r.tanggal === dateStr);
+                                                                        let content = '-';
+                                                                        if (rec) {
+                                                                            if (it.tipe_input === 'checkbox') {
+                                                                                content = rec.is_done ? 'V' : '';
+                                                                            } else {
+                                                                                content = rec.keterangan || '';
+                                                                            }
+                                                                        }
+                                                                        return (
+                                                                            <td key={it.id} className="p-2 border-r border-slate-200 text-center">
+                                                                                {content}
+                                                                            </td>
+                                                                        );
+                                                                    });
+                                                                })}
+                                                            </tr>
+                                                        );
+                                                    });
+                                                })()
+                                            ) : (
+                                                // Summary for ALL santri
+                                                allSantriRekapan.map((s, idx) => (
+                                                    <tr key={s.id} className="border-b border-slate-200 hover:bg-slate-50/50">
+                                                        <td className="p-2 border-r border-slate-200 text-center">{idx + 1}</td>
+                                                        <td className="p-2 border-r border-slate-200 font-medium">{s.nama}</td>
+                                                        {categories.map(cat => {
+                                                            const catItems = items.filter(i => i.kategori_id === cat.id);
+                                                            return catItems.map(it => (
+                                                                <td key={it.id} className="p-2 border-r border-slate-200 text-center font-bold text-indigo-600">
+                                                                    {s.counts[it.id] || 0}
+                                                                </td>
+                                                            ));
+                                                        })}
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
+                            <div className="mt-4 p-3 bg-amber-50 rounded-xl text-amber-800 text-xs border border-amber-200">
+                                <b>Tips:</b> Klik dan tahan di pojok kiri atas tabel, lalu seret hingga pojok kanan bawah untuk menyeleksi seluruh isi tabel. Setelah itu tekan <b>Ctrl + C</b> dan tempel di program Excel atau Google Sheets.
+                            </div>
                         </div>
                     )}
                 </div>

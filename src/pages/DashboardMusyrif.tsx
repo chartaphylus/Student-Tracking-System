@@ -11,7 +11,9 @@ import {
     Palmtree,
     Pin,
     Menu,
-    X
+    X,
+    Smartphone,
+    Stethoscope
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { FullPageSpinner } from '../components/ui/Spinner';
@@ -24,13 +26,15 @@ import LaporanBulanan from './LaporanBulanan';
 import DataLiburan from './DataLiburan';
 import LaporanLiburan from './LaporanLiburan';
 import TugasLiburan from './TugasLiburan';
+import DataPenitipanHp from './DataPenitipanHp';
+import InventarisKesehatan from './InventarisKesehatan';
 
 export default function DashboardMusyrif() {
     const navigate = useNavigate();
     const [musyrif, setMusyrif] = useState<any>(null);
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'students' | 'input' | 'wali' | 'reports' | 'setup-dorm' | 'setup-lib' | 'task-lib' | 'rep-lib'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'input' | 'wali' | 'reports' | 'setup-dorm' | 'setup-lib' | 'task-lib' | 'rep-lib' | 'hp' | 'kesehatan'>('students');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     useEffect(() => {
@@ -88,11 +92,13 @@ export default function DashboardMusyrif() {
             ]
         },
         {
-            label: 'Liburan',
+            label: 'Liburan & Lainnya',
             items: [
                 { id: 'setup-lib', label: 'Setup Liburan', icon: Palmtree },
                 { id: 'rep-lib', label: 'Laporan Liburan', icon: Palmtree },
                 { id: 'task-lib', label: 'Tugas Khusus', icon: Pin },
+                { id: 'hp', label: 'Penitipan HP', icon: Smartphone },
+                { id: 'kesehatan', label: 'UKS & Kesehatan', icon: Stethoscope },
             ]
         }
     ];
@@ -191,7 +197,9 @@ export default function DashboardMusyrif() {
                                             activeTab === 'setup-dorm' ? "Kategori & Kegiatan" :
                                                 activeTab === 'setup-lib' ? "Setup Item Liburan" :
                                                     activeTab === 'rep-lib' ? "Laporan Liburan Santri" :
-                                                        "Tugas Khusus Liburan"
+                                                        activeTab === 'hp' ? "Pendataan Penitipan HP" :
+                                                            activeTab === 'kesehatan' ? "UKS & Inventaris Kesehatan" :
+                                                                "Tugas Khusus Liburan"
                         }
                         subtitle={
                             activeTab === 'students' ? `Daftar santri di bawah bimbingan ${musyrif?.nama || '...'}` :
@@ -201,7 +209,9 @@ export default function DashboardMusyrif() {
                                             activeTab === 'setup-dorm' ? "Kelola kategori dan daftar kegiatan harian santri." :
                                                 activeTab === 'setup-lib' ? "Konfigurasi item kegiatan selama masa liburan." :
                                                     activeTab === 'rep-lib' ? "Pantau kegiatan santri selama berada di rumah." :
-                                                        "Berikan tugas tambahan bagi santri tertentu."
+                                                        activeTab === 'hp' ? "Pencatatan handphone santri yang dititipkan." :
+                                                            activeTab === 'kesehatan' ? "Kelola data medis santri dan log ketersediaan obat UKS." :
+                                                                "Berikan tugas tambahan bagi santri tertentu."
                         }
                         action={null}
                     />
@@ -229,6 +239,8 @@ export default function DashboardMusyrif() {
                                 {activeTab === 'setup-lib' && <DataLiburan musyrifId={musyrif?.id} />}
                                 {activeTab === 'rep-lib' && <LaporanLiburan musyrifId={musyrif?.id} />}
                                 {activeTab === 'task-lib' && <TugasLiburan musyrifId={musyrif?.id} />}
+                                {activeTab === 'hp' && <DataPenitipanHp musyrifId={musyrif?.id} />}
+                                {activeTab === 'kesehatan' && <InventarisKesehatan musyrifId={musyrif?.id} />}
                             </>
                         )}
                     </div>

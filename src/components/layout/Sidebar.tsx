@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Users, BookOpen, ClipboardList, BarChart3, Database, LogOut, Lock, MoonStar, FileText, Menu, X, Pin } from 'lucide-react';
+import { Users, BookOpen, ClipboardList, BarChart3, Database, LogOut, Lock, MoonStar, FileText, Menu, X, Pin, Smartphone, Stethoscope } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const navGroups = [
@@ -18,6 +18,8 @@ const navGroups = [
             { to: '/data-adab-ibadah', icon: BookOpen, label: 'Setup Asrama' },
             { to: '/data-liburan', icon: MoonStar, label: 'Setup Liburan' },
             { to: '/tugas-liburan', icon: Pin, label: 'Tugas Khusus' },
+            { to: '/data-penitipan-hp', icon: Smartphone, label: 'Penitipan HP' },
+            { to: '/inventaris-kesehatan', icon: Stethoscope, label: 'Kesehatan UKS' },
         ]
     },
     {

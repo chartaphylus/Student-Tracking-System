@@ -12,6 +12,8 @@ import DataAkunWali from './pages/DataAkunWali';
 import DataLiburan from './pages/DataLiburan';
 import LaporanLiburan from './pages/LaporanLiburan';
 import TugasLiburan from './pages/TugasLiburan';
+import DataPenitipanHp from './pages/DataPenitipanHp';
+import InventarisKesehatan from './pages/InventarisKesehatan';
 import Home from './pages/Home';
 import LoginWali from './pages/LoginWali';
 import DashboardWali from './pages/DashboardWali';
@@ -70,6 +72,8 @@ export default function App() {
         <Route path="/data-liburan" element={<ProtectedRoute user={session}><DataLiburan /></ProtectedRoute>} />
         <Route path="/tugas-liburan" element={<ProtectedRoute user={session}><TugasLiburan /></ProtectedRoute>} />
         <Route path="/laporan-liburan" element={<ProtectedRoute user={session}><LaporanLiburan /></ProtectedRoute>} />
+        <Route path="/data-penitipan-hp" element={<ProtectedRoute user={session}><DataPenitipanHp /></ProtectedRoute>} />
+        <Route path="/inventaris-kesehatan" element={<ProtectedRoute user={session}><InventarisKesehatan /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

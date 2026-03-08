@@ -32,6 +32,7 @@ export default function DataReferensi() {
     const [nama, setNama] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [isPjKesehatan, setIsPjKesehatan] = useState(false);
     const [selectedMusyrifId, setSelectedMusyrifId] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -64,12 +65,13 @@ export default function DataReferensi() {
     const totalPages = Math.max(1, Math.ceil(activeList.length / ITEMS_PER_PAGE));
     const paginatedItems = activeList.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-    const handleOpenAdd = () => { setEditingId(null); setNama(''); setUsername(''); setPassword(''); setSelectedMusyrifId(''); setIsModalOpen(true); };
+    const handleOpenAdd = () => { setEditingId(null); setNama(''); setUsername(''); setPassword(''); setSelectedMusyrifId(''); setIsPjKesehatan(false); setIsModalOpen(true); };
     const handleOpenEdit = (item: any) => {
         setEditingId(item.id);
         setNama(activeTab === 'kelas' ? item.nama_kelas : activeTab === 'musyrif' ? item.nama : item.nama_kamar);
         setUsername(item.username || '');
         setPassword(item.password || '');
+        setIsPjKesehatan(!!item.is_pj_kesehatan);
         setSelectedMusyrifId(item.musyrif_id || '');
         setIsModalOpen(true);
     };
@@ -92,7 +94,7 @@ export default function DataReferensi() {
         const payload: any = activeTab === 'kelas'
             ? { nama_kelas: nama }
             : activeTab === 'musyrif'
-                ? { nama, username, password }
+                ? { nama, username, password, is_pj_kesehatan: isPjKesehatan }
                 : { nama_kamar: nama, musyrif_id: selectedMusyrifId || null };
 
         const fn = editingId
@@ -148,6 +150,7 @@ export default function DataReferensi() {
                                     <Th>Nama</Th>
                                     {activeTab === 'musyrif' && <Th>Username</Th>}
                                     {activeTab === 'musyrif' && <Th>Password</Th>}
+                                    {activeTab === 'musyrif' && <Th>PJ Kesehatan</Th>}
                                     {activeTab === 'kamar' && <Th>Musyrif</Th>}
                                     <Th className="text-right">Aksi</Th>
                                 </tr>
@@ -165,6 +168,13 @@ export default function DataReferensi() {
                                                 <>
                                                     <Td className="text-xs text-slate-500 font-mono">{item.username || '-'}</Td>
                                                     <Td className="text-xs text-slate-500 font-mono">{item.password || '-'}</Td>
+                                                    <Td className="text-xs font-semibold">
+                                                        {item.is_pj_kesehatan ? (
+                                                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-lg">Ya</span>
+                                                        ) : (
+                                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-lg">Bukan</span>
+                                                        )}
+                                                    </Td>
                                                 </>
                                             )}
                                             {activeTab === 'kamar' && (
@@ -227,6 +237,18 @@ export default function DataReferensi() {
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
                                 <input type="text" required className={inputCls} placeholder="Password login..."
                                     value={password} onChange={e => setPassword(e.target.value)} />
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 mt-2">
+                                <input
+                                    type="checkbox"
+                                    id="is_pj_kesehatan"
+                                    className="w-5 h-5 rounded-lg border-slate-300 text-primary focus:ring-primary/20"
+                                    checked={isPjKesehatan}
+                                    onChange={e => setIsPjKesehatan(e.target.checked)}
+                                />
+                                <label htmlFor="is_pj_kesehatan" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                                    Jadikan sebagai PJ Kesehatan (UKS)
+                                </label>
                             </div>
                         </>
                     )}

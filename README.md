@@ -1,73 +1,72 @@
-# React + TypeScript + Vite
+# IbadahKu - Student Tracking System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**IbadahKu** adalah platform manajemen santri terpadu untuk **Pesantren Rabbaanii Islamic School**. Sistem ini dirancang untuk memudahkan Admin, Musyrif, dan Wali Santri dalam memantau perkembangan harian santri secara real-time.
 
-Currently, two official plugins are available:
+## 🚀 Fitur Utama
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 👨‍💼 Panel Admin & Musyrif
+- **Manajemen Santri**: Pengelolaan data santri lengkap berdasarkan kelas dan kamar.
+- **Input Adab & Ibadah**: Pencatatan kegiatan harian santri (shalat, adab, tilaawah) secara digital.
+- **Inventaris Kesehatan (UKS)**: 
+    - Log Sakit (Nama santri, gejala, status kabar ortu).
+    - Riwayat Obat (Pemberian obat pribadi/UKS).
+    - Stok Obat UKS (Manajemen inventaris obat P3K).
+- **Manajemen HP**: 
+    - Log Penitipan HP (Penyimpanan resmi).
+    - Log Penyitaan HP (Pelanggaran aturan asrama dengan notifikasi ke ortu).
+- **Laporan Bulanan & Liburan**: Pembuatan laporan otomatis dalam format PDF.
 
-## React Compiler
+### 🏠 Panel Wali Santri
+- **Dashboard Perkembangan**: Melihat grafis prestasi ibadah ananda.
+- **Riwayat Kesehatan**: Memantau status sakit dan obat yang diberikan (selama sudah dikabarkan).
+- **Status HP**: Melihat status HP (dititipkan/disita) dengan pesan kebijakan asrama.
+- **Profil & Keamanan**: Pengaturan mandiri kata sandi wali.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Teknologi yang Digunakan
 
-## Expanding the ESLint configuration
+- **Core**: [React.js](https://reactjs.org/) (Vite) + [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL + Auth)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Charts**: [Recharts](https://recharts.org/)
+- **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF) + [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 📦 Instalasi & Menjalankan Lokal
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. **Clone repositori**:
+   ```bash
+   git clone <repository-url>
+   cd IbadahKu
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2. **Instal dependensi**:
+   ```bash
+   npm install
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+3. **Konfigurasi Environment**:
+   Buat file `.env` di root folder dan masukkan kredensial Supabase:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+4. **Jalankan server pengembangan**:
+   ```bash
+   npm run dev
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🗄️ Struktur Database (Tabel Utama)
+- `santri`: Data identitas santri (NIS, Nama, Kelas, Kamar).
+- `penitipan_hp`: Log penitipan perangkat elektronik secara sukarela.
+- `penyitaan_hp`: Catatan pelanggaran penggunaan HP.
+- `log_sakit`: Rekaman santri yang masuk UKS.
+- `obat_uks`: Daftar stok obat di ruang kesehatan.
+- `riwayat_obat`: Catatan pemberian obat ke santri.
+- `akun_wali`: Data login untuk orang tua santri.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 📄 Lisensi
+Sistem ini bersifat internal untuk penggunaan **Pesantren Rabbaanii Islamic School**.
+
+---
+*Dikembangkan dengan ❤️ untuk kemajuan pendidikan Islam.*
