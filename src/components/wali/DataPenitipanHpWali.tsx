@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Smartphone, Info, ShieldAlert, Activity, User } from 'lucide-react';
+import { Smartphone, Info, ShieldAlert, Activity, User, Eye, Image as ImageIcon } from 'lucide-react';
 import { FullPageSpinner } from '../ui/Spinner';
 import { EmptyState } from '../ui/EmptyState';
 
@@ -8,6 +8,7 @@ export function DataPenitipanHpWali({ santriId }: { santriId: string }) {
     const [recordsTitip, setRecordsTitip] = useState<any[]>([]);
     const [recordsSita, setRecordsSita] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [viewPhoto, setViewPhoto] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -63,7 +64,8 @@ export function DataPenitipanHpWali({ santriId }: { santriId: string }) {
                                     <th className="px-5 py-4">Tanggal</th>
                                     <th className="px-5 py-4">Detail Device</th>
                                     <th className="px-5 py-4">Penerima & PJ</th>
-                                    <th className="px-5 py-4">Status</th>
+                                    <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                    <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Bukti</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -83,11 +85,21 @@ export function DataPenitipanHpWali({ santriId }: { santriId: string }) {
                                             <div className="font-semibold text-slate-700 leading-tight">{r.penerima}</div>
                                             <div className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">PJ: {r.penanggung_jawab}</div>
                                         </td>
-                                        <td className="px-5 py-4 text-sm">
+                                        <td className="px-5 py-4 text-sm text-center">
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${r.status === 'Dikembalikan' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
                                                 }`}>
                                                 {r.status}
                                             </span>
+                                        </td>
+                                        <td className="px-5 py-4 text-sm text-center">
+                                            <button
+                                                onClick={() => setViewPhoto(r.bukti_foto)}
+                                                disabled={!r.bukti_foto}
+                                                className={`p-2 rounded-xl transition-all ${r.bukti_foto ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-50 text-slate-200 cursor-not-allowed'}`}
+                                                title={r.bukti_foto ? "Lihat Bukti Foto" : "Tidak ada foto bukti"}
+                                            >
+                                                <Eye size={18} />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -134,6 +146,7 @@ export function DataPenitipanHpWali({ santriId }: { santriId: string }) {
                                     <th className="px-6 py-4">Alasan Penyitaan</th>
                                     <th className="px-6 py-4">Perangkat</th>
                                     <th className="px-6 py-4 text-center">Status</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-black">Bukti</th>
                                     <th className="px-6 py-4">Petugas</th>
                                 </tr>
                             </thead>
@@ -159,6 +172,16 @@ export function DataPenitipanHpWali({ santriId }: { santriId: string }) {
                                                 {r.status}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-5 text-center">
+                                            <button
+                                                onClick={() => setViewPhoto(r.bukti_foto)}
+                                                disabled={!r.bukti_foto}
+                                                className={`p-2.5 rounded-xl transition-all ${r.bukti_foto ? 'bg-white text-red-600 shadow-md hover:shadow-lg active:scale-95' : 'bg-red-50/50 text-red-200 cursor-not-allowed border border-red-50'}`}
+                                                title={r.bukti_foto ? "Lihat Bukti Foto Penyitaan" : "Foto bukti tidak tersedia"}
+                                            >
+                                                <Eye size={18} />
+                                            </button>
+                                        </td>
                                         <td className="px-6 py-5">
                                             <div className="text-xs font-bold text-slate-600 uppercase tracking-tight">Sita: {r.penyita}</div>
                                             <div className="text-[10px] text-slate-400 mt-1 font-medium italic">Pegang: {r.pemegang}</div>
@@ -167,6 +190,23 @@ export function DataPenitipanHpWali({ santriId }: { santriId: string }) {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* View Photo Modal */}
+            {viewPhoto && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={() => setViewPhoto(null)}>
+                    <div className="bg-white rounded-[40px] p-3 shadow-2xl max-w-2xl w-full animate-scale-in relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="absolute top-6 right-6 z-10">
+                            <button onClick={() => setViewPhoto(null)} className="w-12 h-12 rounded-full bg-black/50 text-white flex items-center justify-center backdrop-blur-md hover:bg-black/70 transition-all font-bold text-2xl shadow-xl">&times;</button>
+                        </div>
+                        <img src={viewPhoto} alt="Bukti Foto" className="w-full h-auto rounded-[32px] max-h-[80vh] object-contain shadow-inner" />
+                        <div className="p-6 text-center border-t border-slate-50">
+                            <p className="text-slate-400 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                                <ImageIcon size={14} /> Bukti Serah Terima Perangkat
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}
