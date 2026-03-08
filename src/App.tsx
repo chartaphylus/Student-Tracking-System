@@ -57,7 +57,7 @@ export default function App() {
     <Router>
       <InstallPWA />
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Home session={session} />} />
         <Route path="/login" element={session ? <Navigate to="/data-santri" replace /> : <Login />} />
         <Route path="/login-wali" element={<LoginWali />} />
         <Route path="/login-musyrif" element={<LoginMusyrif />} />

@@ -3,12 +3,17 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { LogIn, BookOpen, LayoutDashboard, BarChart3, GraduationCap, ShieldCheck, UserCog, ChevronDown } from 'lucide-react';
 
-export default function Home() {
+export default function Home({ session }: { session?: any }) {
     const today = new Date();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const [hasWaliSession, setHasWaliSession] = useState(false);
+    const [hasMusyrifSession, setHasMusyrifSession] = useState(false);
 
     useEffect(() => {
+        setHasWaliSession(!!localStorage.getItem('wali_session'));
+        setHasMusyrifSession(!!localStorage.getItem('musyrif_session'));
+
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setIsMenuOpen(false);
@@ -43,8 +48,8 @@ export default function Home() {
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all border ${isMenuOpen
-                                    ? 'bg-primary/5 border-primary/20 text-primary shadow-sm'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                ? 'bg-primary/5 border-primary/20 text-primary shadow-sm'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                         >
                             <UserCog size={18} />
@@ -55,23 +60,23 @@ export default function Home() {
                         {isMenuOpen && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
                                 <Link
-                                    to="/login"
+                                    to={session ? "/data-santri" : "/login"}
                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
                                 >
                                     <LogIn size={16} className="text-slate-400" />
                                     <div>
-                                        <p className="font-bold">Login Admin</p>
+                                        <p className="font-bold">{session ? "Buka Dashboard Admin" : "Login Admin"}</p>
                                         <p className="text-[10px] text-slate-400">Pengelolaan Pusat</p>
                                     </div>
                                 </Link>
                                 <div className="h-px bg-slate-100 my-1 mx-2" />
                                 <Link
-                                    to="/login-musyrif"
+                                    to={hasMusyrifSession ? "/dashboard-musyrif" : "/login-musyrif"}
                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
                                 >
                                     <ShieldCheck size={16} className="text-slate-400" />
                                     <div>
-                                        <p className="font-bold">Login Musyrif</p>
+                                        <p className="font-bold">{hasMusyrifSession ? "Buka Dashboard Musyrif" : "Login Musyrif"}</p>
                                         <p className="text-[10px] text-slate-400">Pembina Kamar</p>
                                     </div>
                                 </Link>
@@ -101,9 +106,9 @@ export default function Home() {
                         </p>
 
                         <div className="flex flex-wrap gap-4">
-                            <Link to="/login-wali">
+                            <Link to={hasWaliSession ? "/dashboard-wali" : "/login-wali"}>
                                 <Button size="lg" className="rounded-2xl px-10 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 active:scale-95 transition-all" icon={<GraduationCap size={20} />}>
-                                    Masuk ke Dashboard Wali Santri
+                                    {hasWaliSession ? "Masuk ke Dashboard Wali Santri" : "Login Wali Santri"}
                                 </Button>
                             </Link>
                         </div>
