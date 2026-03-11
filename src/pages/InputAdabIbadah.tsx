@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { getLocalDateString } from '../lib/dateUtils';
 import { Button } from '../components/ui/Button';
 import { ToastContainer } from '../components/ui/Toast';
 import { FullPageSpinner } from '../components/ui/Spinner';
@@ -12,7 +13,7 @@ const selectCls = `w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-
   focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all`;
 
 export default function InputAdabIbadah({ musyrifContextId }: { musyrifContextId?: string }) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const [tanggal, setTanggal] = useState(today);
     const [musyrif, setMusyrif] = useState(musyrifContextId || '');
     const [kamar, setKamar] = useState('');

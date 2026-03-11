@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getLocalDateString, getLocalDateTimeString } from '../lib/dateUtils';
 import { Search, Plus, Edit2, Trash2, Stethoscope, Pill, Activity, ShieldCheck, HeartPulse } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ToastContainer } from '../components/ui/Toast';
@@ -120,7 +121,7 @@ function TabLogSakit({ santriList, showToast, musyrifId }: any) {
     const [searchSantri, setSearchSantri] = useState('');
     const [formData, setFormData] = useState({
         santri_id: '',
-        waktu_mulai_sakit: new Date().toISOString().slice(0, 16),
+        waktu_mulai_sakit: getLocalDateTimeString(),
         gejala: '',
         status_ortu: 'Belum Dikabari',
         keterangan: ''
@@ -152,11 +153,7 @@ function TabLogSakit({ santriList, showToast, musyrifId }: any) {
         setSearchSantri('');
         if (r) {
             setEditId(r.id);
-            // format datetime-local input expects YYYY-MM-DDThh:mm
-            const dtLocal = new Date(r.waktu_mulai_sakit);
-            const offset = dtLocal.getTimezoneOffset() * 60000;
-            const formatted = (new Date(dtLocal.getTime() - offset)).toISOString().slice(0, 16);
-
+            const formatted = getLocalDateTimeString(new Date(r.waktu_mulai_sakit));
             setFormData({
                 santri_id: r.santri_id,
                 waktu_mulai_sakit: formatted,
@@ -166,12 +163,9 @@ function TabLogSakit({ santriList, showToast, musyrifId }: any) {
             });
         } else {
             setEditId(null);
-            const dtLocal = new Date();
-            const offset = dtLocal.getTimezoneOffset() * 60000;
-            const formatted = (new Date(dtLocal.getTime() - offset)).toISOString().slice(0, 16);
             setFormData({
                 santri_id: '',
-                waktu_mulai_sakit: formatted,
+                waktu_mulai_sakit: getLocalDateTimeString(),
                 gejala: '',
                 status_ortu: 'Belum Dikabari',
                 keterangan: ''
@@ -348,7 +342,7 @@ function TabRiwayatObat({ santriList, showToast, musyrifId }: any) {
     const [searchSantri, setSearchSantri] = useState('');
     const [formData, setFormData] = useState({
         santri_id: '',
-        waktu_diberikan: new Date().toISOString().slice(0, 16),
+        waktu_diberikan: getLocalDateTimeString(),
         nama_obat: '',
         jenis_obat: 'UKS',
         pemberi_obat: '',
@@ -396,9 +390,7 @@ function TabRiwayatObat({ santriList, showToast, musyrifId }: any) {
         setSearchSantri('');
         if (r) {
             setEditId(r.id);
-            const dtLocal = new Date(r.waktu_diberikan);
-            const offset = dtLocal.getTimezoneOffset() * 60000;
-            const formatted = (new Date(dtLocal.getTime() - offset)).toISOString().slice(0, 16);
+            const formatted = getLocalDateTimeString(new Date(r.waktu_diberikan));
             setFormData({
                 santri_id: r.santri_id,
                 waktu_diberikan: formatted,
@@ -409,11 +401,6 @@ function TabRiwayatObat({ santriList, showToast, musyrifId }: any) {
             });
         } else {
             setEditId(null);
-            const dtLocal = new Date();
-            const offset = dtLocal.getTimezoneOffset() * 60000;
-            const formatted = (new Date(dtLocal.getTime() - offset)).toISOString().slice(0, 16);
-
-            // Auto complete pemberi obat based on current user info if possible (can be handled via localstorage usually, skipping for simplicity)
             const musyrifSession = localStorage.getItem('musyrif_session');
             let mName = '';
             if (musyrifSession) {
@@ -422,7 +409,7 @@ function TabRiwayatObat({ santriList, showToast, musyrifId }: any) {
 
             setFormData({
                 santri_id: '',
-                waktu_diberikan: formatted,
+                waktu_diberikan: getLocalDateTimeString(),
                 nama_obat: '',
                 jenis_obat: 'UKS',
                 pemberi_obat: mName,
@@ -630,7 +617,7 @@ function TabObatUks({ isPjKesehatan, showToast }: any) {
     const [confirmDelete, setConfirmDelete] = useState<{ id: string } | null>(null);
     const [formData, setFormData] = useState({
         nama_obat: '',
-        tanggal_pembelian: new Date().toISOString().split('T')[0],
+        tanggal_pembelian: getLocalDateString(),
         stok: 0,
         keterangan: ''
     });
@@ -651,7 +638,7 @@ function TabObatUks({ isPjKesehatan, showToast }: any) {
             setEditId(r.id);
             setFormData({
                 nama_obat: r.nama_obat,
-                tanggal_pembelian: r.tanggal_pembelian || new Date().toISOString().split('T')[0],
+                tanggal_pembelian: r.tanggal_pembelian || getLocalDateString(),
                 stok: r.stok,
                 keterangan: r.keterangan || ''
             });
@@ -659,7 +646,7 @@ function TabObatUks({ isPjKesehatan, showToast }: any) {
             setEditId(null);
             setFormData({
                 nama_obat: '',
-                tanggal_pembelian: new Date().toISOString().split('T')[0],
+                tanggal_pembelian: getLocalDateString(),
                 stok: 0,
                 keterangan: ''
             });

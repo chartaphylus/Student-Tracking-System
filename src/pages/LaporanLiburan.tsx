@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { getLocalDateString } from '../lib/dateUtils';
 import { CheckCircle2, Circle, FileText, Download } from 'lucide-react';
 import { ToastContainer } from '../components/ui/Toast';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -16,7 +17,7 @@ const selectCls = `w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-
 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all`;
 
 export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
     const [musyrif, setMusyrif] = useState('');
     const [kamar, setKamar] = useState('');
     const [santriId, setSantriId] = useState('');
@@ -112,8 +113,8 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
             setAllRecords(recs);
 
             if (santriId) {
-                const sDt = new Date(startDate);
-                const eDt = new Date(endDate);
+                const sDt = new Date(startDate + 'T00:00:00');
+                const eDt = new Date(endDate + 'T00:00:00');
                 const totalDays = Math.max(1, Math.floor((eDt.getTime() - sDt.getTime()) / (1000 * 3600 * 24)) + 1);
 
                 const result = cats.map(c => {
@@ -205,7 +206,7 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
             });
 
             let y = (doc as any).lastAutoTable.finalY + 10;
-            const sDt = new Date(startDate); const eDt = new Date(endDate);
+            const sDt = new Date(startDate + 'T00:00:00'); const eDt = new Date(endDate + 'T00:00:00');
             const tDays = Math.max(1, Math.floor((eDt.getTime() - sDt.getTime()) / (1000 * 3600 * 24)) + 1);
 
             doc.setFontSize(10); doc.setTextColor(26, 66, 103);
@@ -337,7 +338,7 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
                                 ) : (
                                     <div className="space-y-6">
                                         <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-xl text-sm mb-4">
-                                            Total jangka waktu: <b>{Math.max(1, Math.floor((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 3600 * 24)) + 1)} Hari</b>.
+                                            Total jangka waktu: <b>{Math.max(1, Math.floor((new Date(endDate + 'T00:00:00').getTime() - new Date(startDate + 'T00:00:00').getTime()) / (1000 * 3600 * 24)) + 1)} Hari</b>.
                                         </div>
 
                                         {specialTasksRekapan.length > 0 && (
@@ -441,14 +442,14 @@ export default function LaporanLiburan({ musyrifId }: { musyrifId?: string }) {
                                                 // Daily History for ONE santri
                                                 (() => {
                                                     const days = [];
-                                                    let curr = new Date(startDate);
-                                                    const end = new Date(endDate);
+                                                    let curr = new Date(startDate + 'T00:00:00');
+                                                    const end = new Date(endDate + 'T00:00:00');
                                                     while (curr <= end) {
-                                                        days.push(curr.toISOString().split('T')[0]);
+                                                        days.push(getLocalDateString(curr));
                                                         curr.setDate(curr.getDate() + 1);
                                                     }
                                                     return days.map((dateStr, idx) => {
-                                                        const dateObj = new Date(dateStr);
+                                                        const dateObj = new Date(dateStr + 'T00:00:00');
                                                         const hari = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
                                                         return (
                                                             <tr key={dateStr} className="border-b border-slate-200 hover:bg-slate-50/50">

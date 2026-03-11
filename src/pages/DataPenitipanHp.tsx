@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { getLocalDateString } from '../lib/dateUtils';
 import {
     Search, Plus, Edit2, Trash2, Smartphone, ShieldAlert,
     CheckCircle2, XCircle, UserCheck, Calendar,
@@ -43,7 +44,7 @@ export default function DataHP({ musyrifId }: { musyrifId?: string }) {
 
     const [formTitip, setFormTitip] = useState({
         santri_id: '',
-        tanggal_titip: new Date().toISOString().split('T')[0],
+        tanggal_titip: getLocalDateString(),
         penerima: '',
         penanggung_jawab: '',
         merek_hp: '',
@@ -57,7 +58,7 @@ export default function DataHP({ musyrifId }: { musyrifId?: string }) {
 
     const [formSita, setFormSita] = useState({
         santri_id: '',
-        tanggal_sita: new Date().toISOString().split('T')[0],
+        tanggal_sita: getLocalDateString(),
         tanggal_kembali: '',
         alasan: '',
         penyita: '',
@@ -276,7 +277,7 @@ export default function DataHP({ musyrifId }: { musyrifId?: string }) {
             setEditTitipId(null);
             setFormTitip({
                 santri_id: '',
-                tanggal_titip: new Date().toISOString().split('T')[0],
+                tanggal_titip: getLocalDateString(),
                 penerima: '',
                 penanggung_jawab: '',
                 merek_hp: '',
@@ -302,7 +303,7 @@ export default function DataHP({ musyrifId }: { musyrifId?: string }) {
             setEditSitaId(null);
             setFormSita({
                 santri_id: '',
-                tanggal_sita: new Date().toISOString().split('T')[0],
+                tanggal_sita: getLocalDateString(),
                 tanggal_kembali: '',
                 alasan: '',
                 penyita: '',

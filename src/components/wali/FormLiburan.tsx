@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { getLocalDateString } from '../../lib/dateUtils';
 import { Calendar as CalendarIcon, MoonStar, Send, AlertTriangle, Pin, CheckCircle2, Circle } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../ui/Toast';
@@ -12,7 +13,7 @@ interface FormLiburanProps {
 }
 
 export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const [tanggal, setTanggal] = useState(today);
 
     const [loading, setLoading] = useState(true);
@@ -109,14 +110,19 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
 
     const handleToggleSpecialTask = async (task: any) => {
         if (readOnly) return;
+        setSavingItem(task.id);
         const { error } = await supabase
             .from('tugas_liburan_santri')
             .update({ is_done: !task.is_done })
             .eq('id', task.id);
 
-        if (!error) {
+        if (error) {
+            showToast('Gagal: ' + error.message, 'error');
+        } else {
             setSpecialTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_done: !t.is_done } : t));
+            showToast(!task.is_done ? 'Tugas selesai' : 'Tugas belum selesai', 'success');
         }
+        setSavingItem(null);
     };
 
     return (

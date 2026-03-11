@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, User, Calendar, MapPin, GraduationCap, LogOut, Loader2, BarChart3, MoonStar, Smartphone, Stethoscope } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
+import { getLocalDateString } from '../lib/dateUtils';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button } from '../components/ui/Button';
@@ -81,7 +82,7 @@ export default function DashboardWali() {
         setLoading(true);
         const [yr, mo] = monthYear.split('-').map(Number);
         const start = new Date(yr, mo - 1, 1); const end = new Date(yr, mo, 0);
-        const startStr = start.toISOString().split('T')[0]; const endStr = end.toISOString().split('T')[0];
+        const startStr = getLocalDateString(start); const endStr = getLocalDateString(end);
         const daysInMonth = end.getDate();
         try {
             const [catRes, actRes, recRes] = await Promise.all([
@@ -107,7 +108,7 @@ export default function DashboardWali() {
     const processDailyChart = (recs: any[], days: number) => {
         const byDay: Record<number, { t: number; d: number }> = {};
         for (let i = 1; i <= days; i++) byDay[i] = { t: 0, d: 0 };
-        recs.forEach(r => { const d = new Date(r.tanggal).getDate(); byDay[d].t++; if (r.is_done) byDay[d].d++; });
+        recs.forEach(r => { const d = new Date(r.tanggal + 'T00:00:00').getDate(); byDay[d].t++; if (r.is_done) byDay[d].d++; });
         return Array.from({ length: days }, (_, i) => {
             const d = i + 1; return { day: d, value: byDay[d].t > 0 ? Math.round((byDay[d].d / byDay[d].t) * 100) : 0 };
         });
@@ -170,7 +171,7 @@ export default function DashboardWali() {
                 y = Math.max(fy1, fy2) + 14;
             }
             const pc = (doc as any).internal.getNumberOfPages();
-            for (let i = 1; i <= pc; i++) { doc.setPage(i); doc.setFontSize(7); doc.setTextColor(150); doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 14, 285); doc.text(`Hal ${i}/${pc}`, 196, 285, { align: 'right' }); }
+            for (let i = 1; i <= pc; i++) { doc.setPage(i); doc.setFontSize(7); doc.setTextColor(150); doc.text(`Dicetak: ${getLocalDateString()}`, 14, 285); doc.text(`Hal ${i}/${pc}`, 196, 285, { align: 'right' }); }
             doc.save(`Laporan_${selectedSantri.nama}_${monthStr}_${yr}.pdf`);
             showToast('PDF berhasil diunduh', 'success');
         } catch (e) { console.error(e); showToast('Gagal membuat PDF', 'error'); }

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
+import { getLocalDateString } from '../lib/dateUtils';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -73,8 +74,8 @@ export default function LaporanBulanan({ musyrifId }: { musyrifId?: string }) {
         const [year, month] = monthYear.split('-').map(Number);
         const start = new Date(year, month - 1, 1);
         const end = new Date(year, month, 0);
-        const startStr = start.toISOString().split('T')[0];
-        const endStr = end.toISOString().split('T')[0];
+        const startStr = getLocalDateString(start);
+        const endStr = getLocalDateString(end);
         const daysInMonth = end.getDate();
 
         try {
@@ -109,7 +110,7 @@ export default function LaporanBulanan({ musyrifId }: { musyrifId?: string }) {
     const processDailyChart = (recs: any[], days: number) => {
         const byDay: Record<number, { t: number; d: number }> = {};
         for (let i = 1; i <= days; i++) byDay[i] = { t: 0, d: 0 };
-        recs.forEach(r => { const d = new Date(r.tanggal).getDate(); byDay[d].t++; if (r.is_done) byDay[d].d++; });
+        recs.forEach(r => { const d = new Date(r.tanggal + 'T00:00:00').getDate(); byDay[d].t++; if (r.is_done) byDay[d].d++; });
         return Array.from({ length: days }, (_, i) => {
             const d = i + 1;
             return { day: d, value: byDay[d].t > 0 ? Math.round((byDay[d].d / byDay[d].t) * 100) : 0 };
@@ -118,7 +119,7 @@ export default function LaporanBulanan({ musyrifId }: { musyrifId?: string }) {
 
     const processWeekly = (recs: any[]) => {
         const weeks = [0, 1, 2, 3].map(i => ({ no: i + 1, pekan: `Pekan ${i + 1}`, t: 0, d: 0 }));
-        recs.forEach(r => { const w = Math.min(Math.floor((new Date(r.tanggal).getDate() - 1) / 7), 3); weeks[w].t++; if (r.is_done) weeks[w].d++; });
+        recs.forEach(r => { const w = Math.min(Math.floor((new Date(r.tanggal + 'T00:00:00').getDate() - 1) / 7), 3); weeks[w].t++; if (r.is_done) weeks[w].d++; });
         const res = weeks.map(w => ({ ...w, jumlah: w.t, capaian: w.t ? (w.d / w.t) * 100 : 0 }));
         return res.every(r => r.jumlah === 0) ? [] : res;
     };

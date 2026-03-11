@@ -33,7 +33,7 @@ export function ProfilWali({ nim, santri }: ProfilWaliProps) {
         const { error } = await supabase
             .from('akun_wali')
             .update({ password: passwordBaru })
-            .eq('nim', nim);
+            .eq('nim_id', nim);
 
         if (error) {
             showToast('Gagal memperbarui password: ' + error.message, 'error');

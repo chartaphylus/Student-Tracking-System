@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { FullPageSpinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useToast } from '../hooks/useToast';
@@ -19,6 +20,7 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
     const [loading, setLoading] = useState(true);
     const [loadingTasks, setLoadingTasks] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; judul: string } | null>(null);
     const [search, setSearch] = useState('');
 
     // Form state
@@ -114,8 +116,11 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
             .update({ is_done: !task.is_done })
             .eq('id', task.id);
 
-        if (!error) {
+        if (error) {
+            showToast('Gagal mengubah status: ' + error.message, 'error');
+        } else {
             setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_done: !t.is_done } : t));
+            showToast(task.is_done ? 'Tugas ditandai belum selesai' : 'Tugas ditandai selesai', 'success');
         }
     };
 
@@ -125,12 +130,18 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
         setIsModalOpen(true);
     };
 
-    const deleteTask = async (id: string) => {
-        const { error } = await supabase.from('tugas_liburan_santri').delete().eq('id', id);
-        if (!error) {
-            showToast('Tugas dihapus', 'success');
-            setTasks(prev => prev.filter(t => t.id !== id));
+    const deleteTask = async () => {
+        if (!confirmDelete) return;
+        setSubmitting(true);
+        const { error } = await supabase.from('tugas_liburan_santri').delete().eq('id', confirmDelete.id);
+        if (error) {
+            showToast('Gagal menghapus: ' + error.message, 'error');
+        } else {
+            showToast('Tugas berhasil dihapus', 'success');
+            setTasks(prev => prev.filter(t => t.id !== confirmDelete.id));
+            setConfirmDelete(null);
         }
+        setSubmitting(false);
     };
 
     const filteredSantri = santriList.filter(s =>
@@ -241,7 +252,7 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => deleteTask(task.id)}
+                                                        onClick={() => setConfirmDelete({ id: task.id, judul: task.judul })}
                                                         className="p-2 text-slate-300 hover:text-danger hover:bg-danger/5 rounded-lg transition-all"
                                                         title="Hapus Tugas"
                                                     >
@@ -288,6 +299,14 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
                     </div>
                 </form>
             </Modal>
+
+            <ConfirmModal
+                open={!!confirmDelete}
+                onClose={() => setConfirmDelete(null)}
+                onConfirm={deleteTask}
+                loading={submitting}
+                message={`Yakin ingin menghapus tugas "${confirmDelete?.judul}"?`}
+            />
 
             <ToastContainer toasts={toasts} onClose={removeToast} />
         </div>
