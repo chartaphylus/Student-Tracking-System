@@ -21,6 +21,15 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; judul: string; file_url?: string } | null>(null);
     const [search, setSearch] = useState('');
 
+    // Members & Distribution
+    const [allSantri, setAllSantri] = useState<any[]>([]);
+    const [members, setMembers] = useState<any[]>([]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+    const [distMode, setDistMode] = useState<'group' | 'individual'>('group');
+    const [individualOverrides, setIndividualOverrides] = useState<Record<string, { deskripsi: string, file_url: string }>>({});
+    const [indivUploading, setIndivUploading] = useState<string | null>(null);
+    const [indivContentType, setIndivContentType] = useState<'massal' | 'custom'>('massal');
+
     // Form state
     const [form, setForm] = useState({ judul: '', deskripsi: '', file_url: '' });
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -44,6 +53,7 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
                 sQuery = sQuery.in('kamar_id', roomIds);
             }
             const { data: sData } = await sQuery.order('nama');
+            setAllSantri(sData || []);
 
             // Fetch Kamars & Kelas for tabs
             const [kRes, klRes] = await Promise.all([
@@ -68,6 +78,17 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
     useEffect(() => {
         fetchData();
     }, [activeTab, musyrifId]);
+
+    useEffect(() => {
+        if (!selectedTargetId || activeTab === 'santri') {
+            setMembers([]);
+            return;
+        }
+        const filtered = allSantri.filter(s => 
+            activeTab === 'kamar' ? s.kamar_id === selectedTargetId : s.kelas_id === selectedTargetId
+        );
+        setMembers(filtered);
+    }, [selectedTargetId, activeTab, allSantri]);
 
     const fetchTasks = async (targetId: string) => {
         if (!targetId) return;
@@ -110,6 +131,38 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
 
         const table = activeTab === 'santri' ? 'tugas_liburan_santri' : (activeTab === 'kamar' ? 'tugas_liburan_kamar' : 'tugas_liburan_kelas');
         const column = activeTab === 'santri' ? 'santri_id' : (activeTab === 'kamar' ? 'kamar_id' : 'kelas_id');
+
+        // Logic for Individual Distribution in Kamar/Kelas Tab
+        if (!editingTaskId && activeTab !== 'santri' && distMode === 'individual') {
+            if (selectedMemberIds.length === 0) {
+                showToast('Pilih setidaknya satu santri', 'error');
+                setSubmitting(false);
+                return;
+            }
+
+            const payloads = selectedMemberIds.map(sId => {
+                const ovr = individualOverrides[sId];
+                return {
+                    santri_id: sId,
+                    judul: form.judul,
+                    deskripsi: indivContentType === 'custom' ? (ovr?.deskripsi || '') : (form.deskripsi || ''),
+                    file_url: indivContentType === 'custom' ? (ovr?.file_url || null) : (form.file_url || null),
+                    is_done: false
+                };
+            });
+
+            const { error } = await supabase.from('tugas_liburan_santri').insert(payloads);
+            if (error) {
+                showToast('Gagal: ' + error.message, 'error');
+            } else {
+                showToast(`Tugas berhasil dikirim ke ${selectedMemberIds.length} santri`, 'success');
+                setForm({ judul: '', deskripsi: '', file_url: '' });
+                setIsModalOpen(false);
+                setSelectedMemberIds([]);
+            }
+            setSubmitting(false);
+            return;
+        }
 
         const payload: any = {
             [column]: selectedTargetId,
@@ -193,6 +246,34 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
         } catch (error) {
             console.error('Download failed:', error);
             showToast('Gagal mengunduh file', 'error');
+        }
+    };
+
+    const handleIndivFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, sId: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type !== 'application/pdf') {
+            showToast('Hanya dapat mengunggah file PDF', 'error');
+            return;
+        }
+
+        setIndivUploading(sId);
+        try {
+            const fileName = `materi_${Date.now()}_${sId}.pdf`;
+            const { data, error } = await supabase.storage.from('tugas-materi').upload(fileName, file);
+            if (error) throw error;
+            
+            const { data: { publicUrl } } = supabase.storage.from('tugas-materi').getPublicUrl(data.path);
+            setIndividualOverrides(prev => ({
+                ...prev,
+                [sId]: { ...prev[sId], file_url: publicUrl }
+            }));
+            showToast('PDF Khusus berhasil diunggah', 'success');
+        } catch (err: any) {
+            showToast(err.message, 'error');
+        } finally {
+            setIndivUploading(null);
         }
     };
 
@@ -353,7 +434,23 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
                                         </b>
                                     </p>
                                 </div>
-                                <Button icon={<Plus size={16} />} onClick={() => { setEditingTaskId(null); setForm({ judul: '', deskripsi: '', file_url: '' }); setIsModalOpen(true); }}>Tugas Baru</Button>
+                                <Button icon={<Plus size={16} />} onClick={() => { setEditingTaskId(null); setForm({ judul: '', deskripsi: '', file_url: '' }); setDistMode('group'); setSelectedMemberIds([]); setIndividualOverrides({}); setIndivContentType('massal'); setIsModalOpen(true); }}>Tugas Baru</Button>
+                            </div>
+
+                            <div className="p-5 md:p-6 bg-slate-50 border-b border-slate-100">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Anggota Terdaftar ({members.length})</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {members.length === 0 ? (
+                                        <p className="text-[10px] text-slate-400 italic">Tidak ada anggota yang ditemukan di {activeTab} ini.</p>
+                                    ) : (
+                                        members.map(m => (
+                                            <div key={m.id} className="bg-white border border-slate-200 px-3 py-1 rounded-full text-[11px] font-bold text-slate-600 flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                {m.nama}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
 
                             <div className="p-5 md:p-6 min-h-[300px]">
@@ -435,56 +532,175 @@ export default function TugasLiburan({ musyrifId }: { musyrifId?: string }) {
                             onChange={e => setForm({ ...form, judul: e.target.value })}
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Deskripsi / Detail (Opsional)</label>
-                        <textarea
-                            rows={3}
-                            placeholder="Misal: Dari ayat 1 sampai 15, setorkan rekaman via WhatsApp."
-                            className={`${inputCls} h-auto py-2`}
-                            value={form.deskripsi}
-                            onChange={e => setForm({ ...form, deskripsi: e.target.value })}
-                        />
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <Download size={14} /> Berikan Materi PDF (Opsional)
-                        </label>
-                        {form.file_url ? (
-                            <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center shrink-0">
-                                        <FileText size={20} />
-                                    </div>
-                                    <div className="truncate">
-                                        <p className="text-xs font-bold text-slate-700 truncate">Materi_Terlampir.pdf</p>
-                                        <p className="text-[10px] text-emerald-500 font-bold">Siap disimpan</p>
+                    {(activeTab === 'santri' || editingTaskId || distMode === 'group' || indivContentType === 'massal') && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Deskripsi / Detail (Opsional)</label>
+                            <textarea
+                                rows={3}
+                                placeholder="Misal: Dari ayat 1 sampai 15, setorkan rekaman via WhatsApp."
+                                className={`${inputCls} h-auto py-2`}
+                                value={form.deskripsi}
+                                onChange={e => setForm({ ...form, deskripsi: e.target.value })}
+                            />
+                        </div>
+                    )}
+                    {!editingTaskId && activeTab !== 'santri' && (
+                        <div className="space-y-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                            <label className="block text-xs font-black text-indigo-400 uppercase tracking-widest">Model Distribusi Tugas</label>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setDistMode('group')}
+                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all border-2 ${distMode === 'group' ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500'}`}
+                                >
+                                    Rata ke Grup (1 Tugas)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setDistMode('individual')}
+                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all border-2 ${distMode === 'individual' ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500'}`}
+                                >
+                                    Pilih Individu (Berbeda)
+                                </button>
+                            </div>
+
+                            {distMode === 'individual' && (
+                                <div className="p-3 bg-white rounded-xl border border-indigo-100 space-y-3">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipe Konten Individu</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIndivContentType('massal')}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-bold transition-all border ${indivContentType === 'massal' ? 'bg-indigo-100 border-indigo-300 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}
+                                        >
+                                            Materi Sama untuk Semua
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIndivContentType('custom')}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-bold transition-all border ${indivContentType === 'custom' ? 'bg-indigo-100 border-indigo-300 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}
+                                        >
+                                            Materi Beda per Orang
+                                        </button>
                                     </div>
                                 </div>
-                                <button type="button" onClick={() => setForm({ ...form, file_url: '' })} className="w-8 h-8 rounded-full hover:bg-red-50 text-red-400 transition-all font-bold text-lg">&times;</button>
-                            </div>
-                        ) : (
-                            <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-white hover:border-primary/30 transition-all">
-                                <input
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handleFileUpload}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    disabled={uploading}
-                                />
-                                {uploading ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                        <p className="text-xs text-slate-500 font-bold">Mengunggah PDF...</p>
+                            )}
+
+                            {distMode === 'individual' && (
+                                <div className="mt-4 space-y-2">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Pilih Santri ({selectedMemberIds.length}/{members.length})</label>
+                                        <button type="button" onClick={() => setSelectedMemberIds(selectedMemberIds.length === members.length ? [] : members.map(m => m.id))} className="text-[10px] text-primary font-black uppercase tracking-widest hover:underline">
+                                            {selectedMemberIds.length === members.length ? 'Batal Semua' : 'Pilih Semua'}
+                                        </button>
                                     </div>
-                                ) : (
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-bold text-slate-600">Klik atau geser file PDF di sini</p>
-                                        <p className="text-[10px] text-slate-400">File akan terunggah secara otomatis</p>
+                                    <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-3 bg-white p-3 rounded-xl border border-indigo-100">
+                                        {members.map(m => {
+                                            const isSelected = selectedMemberIds.includes(m.id);
+                                            const ovr = individualOverrides[m.id];
+                                            return (
+                                                <div key={m.id} className={`p-3 rounded-xl border transition-all ${isSelected ? 'bg-indigo-50/30 border-indigo-200' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+                                                    <label className="flex items-center gap-3 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={e => {
+                                                                if (e.target.checked) setSelectedMemberIds(prev => [...prev, m.id]);
+                                                                else setSelectedMemberIds(prev => prev.filter(id => id !== m.id));
+                                                            }}
+                                                            className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                                                        />
+                                                        <span className="text-xs font-bold text-slate-700">{m.nama}</span>
+                                                    </label>
+                                                    
+                                                    {isSelected && indivContentType === 'custom' && (
+                                                        <div className="mt-3 pl-7 space-y-2 animate-fade-in border-l-2 border-indigo-100 ml-2">
+                                                            <textarea
+                                                                placeholder="Deskripsi khusus untuk santri ini (Opsional)..."
+                                                                className="w-full p-2 text-[11px] bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-300 transition-all resize-none"
+                                                                rows={2}
+                                                                value={ovr?.deskripsi || ''}
+                                                                onChange={e => setIndividualOverrides(prev => ({
+                                                                    ...prev,
+                                                                    [m.id]: { ...prev[m.id], deskripsi: e.target.value }
+                                                                }))}
+                                                            />
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="flex-1">
+                                                                    {ovr?.file_url ? (
+                                                                        <div className="flex items-center gap-2 bg-emerald-50 text-emerald-600 p-1.5 rounded-lg border border-emerald-100">
+                                                                            <FileText size={12} />
+                                                                            <span className="text-[10px] font-bold truncate max-w-[100px]">PDF Khusus</span>
+                                                                            <button type="button" onClick={() => setIndividualOverrides(prev => ({ ...prev, [m.id]: { ...prev[m.id], file_url: '' } }))} className="text-red-400 hover:text-red-600 font-bold ml-auto">&times;</button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <label className={`flex items-center justify-center gap-2 p-1.5 border border-dashed border-slate-300 rounded-lg text-[10px] font-bold text-slate-400 cursor-pointer hover:bg-white hover:text-primary hover:border-primary/30 transition-all ${indivUploading === m.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                                            <Download size={12} />
+                                                                            {indivUploading === m.id ? 'Mengunggah...' : 'Upload PDF Khusus'}
+                                                                            <input
+                                                                                type="file"
+                                                                                accept=".pdf"
+                                                                                className="hidden"
+                                                                                onChange={e => handleIndivFileUpload(e, m.id)}
+                                                                            />
+                                                                        </label>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-[9px] text-slate-400 italic shrink-0">Kosongkan jika pakai default</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {(activeTab === 'santri' || editingTaskId || distMode === 'group' || indivContentType === 'massal') && (
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Download size={14} /> Berikan Materi PDF (Opsional)
+                            </label>
+                            {form.file_url ? (
+                                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center shrink-0">
+                                            <FileText size={20} />
+                                        </div>
+                                        <div className="truncate">
+                                            <p className="text-xs font-bold text-slate-700 truncate">Materi_Terlampir.pdf</p>
+                                            <p className="text-[10px] text-emerald-500 font-bold">Siap disimpan</p>
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={() => setForm({ ...form, file_url: '' })} className="w-8 h-8 rounded-full hover:bg-red-50 text-red-400 transition-all font-bold text-lg">&times;</button>
+                                </div>
+                            ) : (
+                                <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-white hover:border-primary/30 transition-all">
+                                    <input
+                                        type="file"
+                                        accept=".pdf"
+                                        onChange={handleFileUpload}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        disabled={uploading}
+                                    />
+                                    {uploading ? (
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                            <p className="text-xs text-slate-500 font-bold">Mengunggah PDF...</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-bold text-slate-600">Klik atau geser file PDF di sini</p>
+                                            <p className="text-[10px] text-slate-400">File akan terunggah secara otomatis</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div className="flex gap-3 pt-2">
                         <Button type="button" variant="outline" fullWidth onClick={() => setIsModalOpen(false)} disabled={submitting || uploading}>Batal</Button>
                         <Button type="submit" fullWidth loading={submitting} disabled={uploading}>Simpan Tugas</Button>
