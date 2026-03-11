@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getLocalDateString } from '../../lib/dateUtils';
-import { Calendar as CalendarIcon, MoonStar, Send, AlertTriangle, Pin, CheckCircle2, Circle } from 'lucide-react';
+import { Calendar as CalendarIcon, MoonStar, Send, AlertTriangle, Pin, CheckCircle2, Circle, Download, FileText } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../ui/Toast';
 import { FullPageSpinner } from '../ui/Spinner';
 import { EmptyState } from '../ui/EmptyState';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 
 interface FormLiburanProps {
     santriId: string;
@@ -23,6 +25,7 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
     const [specialTasks, setSpecialTasks] = useState<any[]>([]);
 
     const [savingItem, setSavingItem] = useState<string | null>(null);
+    const [viewingPdf, setViewingPdf] = useState<string | null>(null);
 
     const { toasts, showToast, removeToast } = useToast();
 
@@ -33,17 +36,17 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [catRes, itemRes, recRes, specialRes] = await Promise.all([
+            const [catRes, itemRes, recRes, sntRes] = await Promise.all([
                 supabase.from('kategori_liburan').select('*').order('created_at'),
                 supabase.from('item_liburan').select('*').order('created_at'),
                 supabase.from('record_liburan')
                     .select('*')
                     .eq('santri_id', santriId)
                     .eq('tanggal', tanggal),
-                supabase.from('tugas_liburan_santri')
-                    .select('*')
-                    .eq('santri_id', santriId)
-                    .order('created_at', { ascending: false })
+                supabase.from('santri')
+                    .select('id, nama, kamar_id, kelas_id')
+                    .eq('id', santriId)
+                    .single()
             ]);
 
             if (catRes.error && catRes.error.code === '42P01') {
@@ -55,7 +58,23 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
             if (catRes.data) setCategories(catRes.data);
             if (itemRes.data) setItems(itemRes.data);
             if (recRes.data) setRecords(recRes.data);
-            if (specialRes?.data) setSpecialTasks(specialRes.data);
+
+            const santri = sntRes.data;
+            if (santri) {
+                const [personalRes, roomRes, classRes] = await Promise.all([
+                    supabase.from('tugas_liburan_santri').select('*').eq('santri_id', santriId),
+                    supabase.from('tugas_liburan_kamar').select('*').eq('kamar_id', santri.kamar_id),
+                    supabase.from('tugas_liburan_kelas').select('*').eq('kelas_id', santri.kelas_id)
+                ]);
+
+                const allTasks = [
+                    ...(personalRes.data || []).map(t => ({ ...t, targetType: 'Personal' })),
+                    ...(roomRes.data || []).map(t => ({ ...t, targetType: 'Kamar' })),
+                    ...(classRes.data || []).map(t => ({ ...t, targetType: 'Kelas' }))
+                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+                setSpecialTasks(allTasks);
+            }
 
         } catch (e) {
             console.error(e);
@@ -71,7 +90,6 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
         if (!isEditable) return;
         setSavingItem(itemId);
 
-        // Cek rekaman sebelumnya
         const existing = records.find(r => r.item_id === itemId);
 
         let error;
@@ -109,7 +127,7 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
     };
 
     const handleToggleSpecialTask = async (task: any) => {
-        if (readOnly) return;
+        if (readOnly || task.targetType !== 'Personal') return;
         setSavingItem(task.id);
         const { error } = await supabase
             .from('tugas_liburan_santri')
@@ -123,6 +141,24 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
             showToast(!task.is_done ? 'Tugas selesai' : 'Tugas belum selesai', 'success');
         }
         setSavingItem(null);
+    };
+
+    const handleDownload = async (url: string, title: string) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `${title.replace(/ /g, '_')}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error('Download failed:', error);
+            showToast('Gagal mengunduh file', 'error');
+        }
     };
 
     return (
@@ -166,23 +202,52 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
                     {/* Special Tasks Section */}
                     {specialTasks.length > 0 && (
                         <div className="bg-amber-50/50 border border-amber-100 rounded-2xl overflow-hidden mb-6">
-                            <div className="px-5 py-3 border-b border-amber-100 flex items-center gap-2">
-                                <Pin size={16} className="text-amber-500 rotate-45" />
-                                <h4 className="font-bold text-amber-900 text-sm">Tugas Khusus dari Musyrif</h4>
+                            <div className="px-5 py-3 border-b border-amber-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Pin size={16} className="text-amber-500 rotate-45" />
+                                    <h4 className="font-bold text-amber-900 text-sm">Tugas & Materi Khusus</h4>
+                                </div>
+                                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-black uppercase">Instruksi Musyrif</span>
                             </div>
                             <div className="p-4 space-y-3">
                                 {specialTasks.map(task => (
                                     <div
                                         key={task.id}
                                         onClick={() => handleToggleSpecialTask(task)}
-                                        className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${task.is_done ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-amber-100 cursor-pointer hover:shadow-sm'}`}
+                                        className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${task.targetType === 'Personal' ? (task.is_done ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-amber-100 cursor-pointer hover:shadow-sm') : 'bg-white border-slate-200 shadow-sm'}`}
                                     >
-                                        <div className={`mt-0.5 ${task.is_done ? 'text-emerald-500' : 'text-slate-300'}`}>
-                                            {task.is_done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                                        </div>
+                                        {task.targetType === 'Personal' && (
+                                            <div className={`mt-0.5 ${task.is_done ? 'text-emerald-500' : 'text-slate-300'}`}>
+                                                {task.is_done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                                            </div>
+                                        )}
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-sm font-bold ${task.is_done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{task.judul}</p>
-                                            {task.deskripsi && <p className={`text-xs mt-0.5 ${task.is_done ? 'text-slate-300' : 'text-slate-500'}`}>{task.deskripsi}</p>}
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <p className={`text-sm font-bold ${task.targetType === 'Personal' && task.is_done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                                                    {task.judul}
+                                                </p>
+                                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${task.targetType === 'Personal' ? 'bg-blue-100 text-blue-600' : (task.targetType === 'Kamar' ? 'bg-purple-100 text-purple-600' : 'bg-orange-100 text-orange-600')}`}>
+                                                    {task.targetType}
+                                                </span>
+                                            </div>
+                                            {task.deskripsi && <p className={`text-xs ${task.targetType === 'Personal' && task.is_done ? 'text-slate-300' : 'text-slate-500'}`}>{task.deskripsi}</p>}
+                                            
+                                            {task.file_url && (
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setViewingPdf(task.file_url); }}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm"
+                                                    >
+                                                        <FileText size={12} /> Lihat Materi
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleDownload(task.file_url, task.judul); }}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all shadow-sm border border-slate-200"
+                                                    >
+                                                        <Download size={12} /> Download
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -196,7 +261,6 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
                         const catItems = items.filter(a => a.kategori_id === cat.id);
                         if (catItems.length === 0) return null;
 
-                        // Hitung progress di kategori tsb
                         const catProgress = catItems.reduce((acc, item) => {
                             const rec = records.find(r => r.item_id === item.id);
                             const done = rec?.is_done || (rec?.keterangan && rec?.keterangan.trim().length > 0);
@@ -280,6 +344,23 @@ export function FormLiburan({ santriId, readOnly = false }: FormLiburanProps) {
                     })}
                 </div>
             )}
+
+            <Modal open={!!viewingPdf} onClose={() => setViewingPdf(null)} title="Pratinjau Materi PDF">
+                <div className="w-full h-[70vh] rounded-xl overflow-hidden bg-slate-100">
+                    {viewingPdf ? (
+                        <iframe
+                            src={`${viewingPdf}#toolbar=0`}
+                            className="w-full h-full border-none"
+                            title="PDF Preview"
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-slate-400">Memuat PDF...</div>
+                    )}
+                </div>
+                <div className="mt-4 flex justify-end">
+                    <Button onClick={() => setViewingPdf(null)}>Tutup</Button>
+                </div>
+            </Modal>
 
             <ToastContainer toasts={toasts} onClose={removeToast} />
         </div>
