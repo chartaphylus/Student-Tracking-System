@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Edit2, Trash2, KeyRound, Plus } from 'lucide-react';
+import { Edit2, Trash2, KeyRound, Plus, RefreshCw, Search } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -23,6 +23,10 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [search, setSearch] = useState('');
+    const [kelasFilter, setKelasFilter] = useState('');
+    const [kamarFilter, setKamarFilter] = useState('');
+    const [kelasList, setKelasList] = useState<any[]>([]);
+    const [kamarList, setKamarList] = useState<any[]>([]);
 
     // Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,6 +34,8 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ nim_id: '', password: '', santri_id: '' });
     const [submitting, setSubmitting] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
 
     const { toasts, showToast, removeToast } = useToast();
 
@@ -39,21 +45,30 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
     }, []);
 
     const fetchMasterData = async () => {
-        let query = supabase.from('santri').select('id, nama, nim, kamar_id');
-        if (musyrifId) {
-            const { data: rooms } = await supabase.from('kamars').select('id').eq('musyrif_id', musyrifId);
-            const roomIds = (rooms || []).map(r => r.id);
-            query = query.in('kamar_id', roomIds);
+        const [santriRes, kelasRes, kamarRes] = await Promise.all([
+            supabase.from('santri').select('id, nama, nim, kamar_id'),
+            supabase.from('kelas_list').select('*').order('nama_kelas'),
+            supabase.from('kamars').select('id, nama_kamar, musyrifs(id, nama)').order('nama_kamar'),
+        ]);
+
+        if (santriRes.data) {
+            let sList = santriRes.data;
+            if (musyrifId) {
+                const { data: rooms } = await supabase.from('kamars').select('id').eq('musyrif_id', musyrifId);
+                const roomIds = (rooms || []).map(r => r.id);
+                sList = sList.filter(s => roomIds.includes(s.kamar_id));
+            }
+            setSantriList(sList);
         }
-        const { data } = await query.order('nama');
-        if (data) setSantriList(data);
+        if (kelasRes.data) setKelasList(kelasRes.data);
+        if (kamarRes.data) setKamarList(kamarRes.data);
     };
 
     const fetchAkunWali = async () => {
         setLoading(true);
         let query = supabase
             .from('akun_wali')
-            .select('id, nim_id, password, santri_id, created_at, santri(id, nama, nim, kamar_id, kamars(musyrif_id))');
+            .select('id, nim_id, password, santri_id, created_at, santri(id, nama, nim, kelas_id, kamar_id, kamars(musyrif_id))');
 
         if (musyrifId) {
             // Complex filter: we need students in musyrif's rooms
@@ -99,6 +114,61 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
         setConfirmDelete(null);
     };
 
+    const handleSyncAll = async () => {
+        setIsSyncConfirmOpen(false);
+        setSyncing(true);
+        try {
+            // Ambil data terbaru
+            const { data: allSantri } = await supabase.from('santri').select('id, nama, nim');
+            const { data: allAkun } = await supabase.from('akun_wali').select('id, nim_id, santri_id');
+            
+            if (!allSantri || !allAkun) throw new Error('Gagal mengambil data untuk sinkronisasi');
+
+            const toCreate: any[] = [];
+            const toUpdate: any[] = [];
+
+            allSantri.forEach(s => {
+                const akun = allAkun.find(a => a.santri_id === s.id);
+                if (!akun) {
+                    if (s.nim) {
+                        toCreate.push({
+                            santri_id: s.id,
+                            nim_id: s.nim,
+                            password: 'password123'
+                        });
+                    }
+                } else if (akun.nim_id !== s.nim && s.nim) {
+                    toUpdate.push({
+                        id: akun.id,
+                        nim_id: s.nim
+                    });
+                }
+            });
+
+            let createdCount = 0;
+            let updatedCount = 0;
+
+            if (toCreate.length > 0) {
+                const { error } = await supabase.from('akun_wali').insert(toCreate);
+                if (!error) createdCount = toCreate.length;
+            }
+
+            if (toUpdate.length > 0) {
+                for (const item of toUpdate) {
+                    const { error } = await supabase.from('akun_wali').update({ nim_id: item.nim_id }).eq('id', item.id);
+                    if (!error) updatedCount++;
+                }
+            }
+
+            showToast(`Sinkronisasi selesai: ${createdCount} akun dibuat, ${updatedCount} NIS diperbarui`, 'success');
+            fetchAkunWali();
+        } catch (err: any) {
+            showToast('Gagal sinkronisasi: ' + err.message, 'error');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
@@ -125,10 +195,16 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
         setSubmitting(false);
     };
 
-    const filtered = akunData.filter(a =>
-        (a.nim_id || '').toLowerCase().includes(search.toLowerCase()) ||
-        ((a.santri as any)?.nama || '').toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = akunData.filter(a => {
+        const matchesSearch = (a.nim_id || '').toLowerCase().includes(search.toLowerCase()) ||
+            ((a.santri as any)?.nama || '').toLowerCase().includes(search.toLowerCase());
+        
+        const santri = a.santri as any;
+        const matchesKelas = !kelasFilter || santri?.kelas_id === kelasFilter;
+        const matchesKamar = !kamarFilter || santri?.kamar_id === kamarFilter;
+        
+        return matchesSearch && matchesKelas && matchesKamar;
+    });
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
     const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -140,20 +216,56 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
                     title="Data Akun Wali"
                     subtitle="Kelola akses masuk orang tua dan wali santri."
                     action={
-                        <Button icon={<Plus size={16} />} onClick={handleOpenAdd}>Tambah Akun</Button>
+                        <div className="flex gap-2">
+                            <Button 
+                                variant="outline" 
+                                icon={<RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />} 
+                                onClick={() => setIsSyncConfirmOpen(true)}
+                                disabled={syncing}
+                            >
+                                {syncing ? 'Sinkroning...' : 'Sinkronkan Data'}
+                            </Button>
+                            <Button icon={<Plus size={16} />} onClick={handleOpenAdd}>Tambah Akun</Button>
+                        </div>
                     }
                 />
             )}
 
             {/* Filter */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5">
-                <input
-                    type="text"
-                    placeholder="Cari NIS atau nama santri..."
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                    className={inputCls}
-                />
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5 space-y-3">
+                <div className="flex flex-col md:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                            type="text"
+                            placeholder="Cari NIS atau nama santri..."
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                            className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                        />
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                    <select
+                        value={kelasFilter}
+                        onChange={e => { setKelasFilter(e.target.value); setCurrentPage(1); }}
+                        className="flex-1 min-w-[150px] h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                    >
+                        <option value="">Semua Kelas</option>
+                        {kelasList.map(k => <option key={k.id} value={k.id}>{k.nama_kelas}</option>)}
+                    </select>
+                    <select
+                        value={kamarFilter}
+                        onChange={e => { setKamarFilter(e.target.value); setCurrentPage(1); }}
+                        className="flex-1 min-w-[150px] h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                    >
+                        <option value="">Semua Kamar</option>
+                        {kamarList
+                            .filter(k => !musyrifId || k.musyrif_id === musyrifId || k.musyrifs?.id === musyrifId)
+                            .map(k => <option key={k.id} value={k.id}>{k.nama_kamar}</option>)
+                        }
+                    </select>
+                </div>
             </div>
 
             {/* Table */}
@@ -265,6 +377,17 @@ export default function DataAkunWali({ musyrifId }: { musyrifId?: string }) {
                 onConfirm={handleDelete}
                 loading={submitting}
                 message={`Yakin ingin menghapus akun dengan NIS "${confirmDelete?.nim_id}"?`}
+            />
+
+            {/* Confirm Sync All */}
+            <ConfirmModal
+                open={isSyncConfirmOpen}
+                onClose={() => setIsSyncConfirmOpen(false)}
+                onConfirm={handleSyncAll}
+                loading={syncing}
+                title="Sinkronisasi Akun Wali"
+                confirmLabel="Ya, Sinkronkan"
+                message="Sinkronkan semua data akun wali dengan data santri? Ini akan membuat akun yang belum ada dan memperbarui NIS yang salah untuk akun yang sudah ada."
             />
 
             <ToastContainer toasts={toasts} onClose={removeToast} />

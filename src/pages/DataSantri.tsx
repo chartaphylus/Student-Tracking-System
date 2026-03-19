@@ -80,9 +80,13 @@ export default function DataSantri({ musyrifId }: { musyrifId?: string }) {
     const handleDelete = async () => {
         if (!confirmDelete) return;
         setSubmitting(true);
+        
+        // Hapus akun_wali terkait terlebih dahulu (mencegah orphan)
+        await supabase.from('akun_wali').delete().eq('santri_id', confirmDelete.id);
+        
         const { error } = await supabase.from('santri').delete().eq('id', confirmDelete.id);
         if (error) showToast('Gagal menghapus: ' + error.message, 'error');
-        else { showToast('Santri berhasil dihapus', 'success'); fetchSantri(); }
+        else { showToast('Santri dan akun wali berhasil dihapus', 'success'); fetchSantri(); }
         setSubmitting(false);
         setConfirmDelete(null);
     };
@@ -97,22 +101,49 @@ export default function DataSantri({ musyrifId }: { musyrifId?: string }) {
             kamar_id: formData.kamar_id || null,
             is_ketua: formData.is_ketua
         };
-        const fn = editingId
-            ? supabase.from('santri').update(payload).eq('id', editingId)
-            : supabase.from('santri').insert([payload]);
-        const { error } = await fn;
-        if (error) showToast('Gagal menyimpan: ' + error.message, 'error');
-        else {
-            // Jika update dan NIM/NIS berubah, sinkronkan ke akun_wali
-            if (editingId && payload.nim) {
-                await supabase
-                    .from('akun_wali')
-                    .update({ nim_id: payload.nim })
-                    .eq('santri_id', editingId);
+        
+        if (editingId) {
+            // UPDATE
+            const { error: updateError } = await supabase.from('santri').update(payload).eq('id', editingId);
+            if (updateError) {
+                showToast('Gagal memperbarui santri: ' + updateError.message, 'error');
+            } else {
+                // Sinkronkan ke akun_wali jika NIM tersedia
+                if (payload.nim) {
+                    await supabase
+                        .from('akun_wali')
+                        .update({ nim_id: payload.nim })
+                        .eq('santri_id', editingId);
+                }
+                showToast('Santri diperbarui', 'success');
+                setIsModalOpen(false);
+                fetchSantri();
             }
-            showToast(editingId ? 'Santri diperbarui' : 'Santri ditambahkan', 'success');
-            setIsModalOpen(false);
-            fetchSantri();
+        } else {
+            // INSERT
+            const { data: newSantri, error: insertError } = await supabase
+                .from('santri')
+                .insert([payload])
+                .select()
+                .single();
+                
+            if (insertError) {
+                showToast('Gagal menambahkan santri: ' + insertError.message, 'error');
+            } else if (newSantri && payload.nim) {
+                // Otomatis buat akun wali dengan password default
+                await supabase.from('akun_wali').insert([{
+                    santri_id: newSantri.id,
+                    nim_id: payload.nim,
+                    password: 'password123' // Password default
+                }]);
+                showToast('Santri ditambahkan & akun wali dibuat', 'success');
+                setIsModalOpen(false);
+                fetchSantri();
+            } else {
+                showToast('Santri ditambahkan (NIS kosong, akun tidak dibuat)', 'success');
+                setIsModalOpen(false);
+                fetchSantri();
+            }
         }
         setSubmitting(false);
     };
