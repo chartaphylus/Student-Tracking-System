@@ -102,7 +102,18 @@ export default function DataSantri({ musyrifId }: { musyrifId?: string }) {
             : supabase.from('santri').insert([payload]);
         const { error } = await fn;
         if (error) showToast('Gagal menyimpan: ' + error.message, 'error');
-        else { showToast(editingId ? 'Santri diperbarui' : 'Santri ditambahkan', 'success'); setIsModalOpen(false); fetchSantri(); }
+        else {
+            // Jika update dan NIM/NIS berubah, sinkronkan ke akun_wali
+            if (editingId && payload.nim) {
+                await supabase
+                    .from('akun_wali')
+                    .update({ nim_id: payload.nim })
+                    .eq('santri_id', editingId);
+            }
+            showToast(editingId ? 'Santri diperbarui' : 'Santri ditambahkan', 'success');
+            setIsModalOpen(false);
+            fetchSantri();
+        }
         setSubmitting(false);
     };
 
